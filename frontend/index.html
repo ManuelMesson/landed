@@ -44,8 +44,70 @@
               <h2>Resume editor</h2>
               <span class="mini-label">Base resume for this track</span>
             </div>
-            <label class="sr-only" for="resume-editor">Edit resume</label>
-            <textarea id="resume-editor" rows="18"></textarea>
+            <div id="resume-editor" class="resume-editor" aria-label="Edit resume">
+              <section class="resume-section">
+                <div class="resume-section-header">
+                  <h3>Name + Title</h3>
+                </div>
+                <label for="resume-name-title">Name + Title</label>
+                <input id="resume-name-title" name="nameTitle" type="text" placeholder="Manuel Messon-Roque" />
+              </section>
+
+              <section class="resume-section">
+                <div class="resume-section-header">
+                  <h3>Contact</h3>
+                </div>
+                <label for="resume-contact">Contact</label>
+                <input
+                  id="resume-contact"
+                  name="contact"
+                  type="text"
+                  placeholder="Seattle, WA · manuelmesson@gmail.com"
+                />
+              </section>
+
+              <section class="resume-section">
+                <div class="resume-section-header">
+                  <h3>Experience</h3>
+                </div>
+                <div id="experience-list" class="entry-list"></div>
+                <button id="add-experience" class="add-entry-button" type="button">+ Add experience</button>
+              </section>
+
+              <section class="resume-section">
+                <div class="resume-section-header">
+                  <h3>Projects</h3>
+                </div>
+                <div id="project-list" class="entry-list"></div>
+                <button id="add-project" class="add-entry-button" type="button">+ Add project</button>
+              </section>
+
+              <section class="resume-section">
+                <div class="resume-section-header">
+                  <h3>Skills</h3>
+                </div>
+                <label for="resume-skills">Skills</label>
+                <textarea
+                  id="resume-skills"
+                  name="skills"
+                  rows="2"
+                  placeholder="Customer Success, Process Improvement, HubSpot"
+                ></textarea>
+              </section>
+
+              <section class="resume-section">
+                <div class="resume-section-header">
+                  <h3>Education</h3>
+                </div>
+                <label for="resume-education">Education</label>
+                <textarea
+                  id="resume-education"
+                  name="education"
+                  rows="3"
+                  placeholder="Seattle Central College, Associate of Business, Dec 2025"
+                ></textarea>
+              </section>
+            </div>
           </article>
         </section>
 

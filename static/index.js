@@ -12,6 +12,10 @@ const analyzeButton = document.querySelector("#analyze-button");
 const saveResumeButton = document.querySelector("#save-resume");
 const logJobButton = document.querySelector("#log-job");
 const statusLine = document.querySelector("#status-line");
+const experienceList = document.querySelector("#experience-list");
+const projectList = document.querySelector("#project-list");
+const addExperienceButton = document.querySelector("#add-experience");
+const addProjectButton = document.querySelector("#add-project");
 
 const atsScoreEl = document.querySelector("#ats-score");
 const hmScoreEl = document.querySelector("#hm-score");
@@ -68,6 +72,301 @@ function renderAnalysis(payload) {
   renderList("red-flags", payload.red_flags);
 }
 
+function createField(labelText, name, placeholder = "", value = "", options = {}) {
+  const wrapper = document.createElement("label");
+  wrapper.className = "entry-field";
+
+  const label = document.createElement("span");
+  label.textContent = labelText;
+  wrapper.appendChild(label);
+
+  const control = options.multiline ? document.createElement("textarea") : document.createElement("input");
+  control.name = name;
+  control.placeholder = placeholder;
+  control.value = value;
+  if (options.multiline) {
+    control.rows = options.rows || 4;
+  } else {
+    control.type = "text";
+  }
+  wrapper.appendChild(control);
+  return wrapper;
+}
+
+function createRemoveButton(label) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "remove-entry-button";
+  button.dataset.removeEntry = "true";
+  button.setAttribute("aria-label", `Remove ${label}`);
+  button.textContent = "✕ Remove";
+  return button;
+}
+
+function createExperienceEntry(entry = {}) {
+  const card = document.createElement("article");
+  card.className = "entry-card";
+  card.dataset.entryType = "experience";
+
+  const header = document.createElement("div");
+  header.className = "entry-card-header";
+
+  const title = document.createElement("h4");
+  title.textContent = "Experience entry";
+  header.appendChild(title);
+  header.appendChild(createRemoveButton("experience entry"));
+  card.appendChild(header);
+
+  const grid = document.createElement("div");
+  grid.className = "entry-grid";
+  grid.appendChild(createField("Company", "company", "Amazon", entry.company || ""));
+  grid.appendChild(createField("Title", "title", "Customer Success Specialist", entry.title || ""));
+  grid.appendChild(createField("Dates", "dates", "2024-Present", entry.dates || ""));
+  card.appendChild(grid);
+
+  const bullets = Array.isArray(entry.bullets) && entry.bullets.length ? entry.bullets.join("\n") : "";
+  card.appendChild(
+    createField("Bullets", "bullets", "Led onboarding for enterprise customers\nImproved response time", bullets, {
+      multiline: true,
+      rows: 4,
+    })
+  );
+  return card;
+}
+
+function createProjectEntry(entry = {}) {
+  const card = document.createElement("article");
+  card.className = "entry-card";
+  card.dataset.entryType = "project";
+
+  const header = document.createElement("div");
+  header.className = "entry-card-header";
+
+  const title = document.createElement("h4");
+  title.textContent = "Project entry";
+  header.appendChild(title);
+  header.appendChild(createRemoveButton("project entry"));
+  card.appendChild(header);
+
+  const grid = document.createElement("div");
+  grid.className = "entry-grid entry-grid-project";
+  grid.appendChild(createField("Project name", "name", "Landed", entry.name || ""));
+  grid.appendChild(
+    createField("Description", "description", "AI job search command center", entry.description || "")
+  );
+  card.appendChild(grid);
+
+  return card;
+}
+
+function parseExperienceLine(line) {
+  const cleaned = line.replace(/^-+\s*/, "").trim();
+  if (!cleaned) {
+    return { company: "", title: "", dates: "", bullets: [] };
+  }
+  const parts = cleaned.split(",").map((part) => part.trim()).filter(Boolean);
+  if (parts.length >= 3) {
+    return {
+      title: parts[0],
+      company: parts.slice(1, -1).join(", "),
+      dates: parts.at(-1) || "",
+      bullets: [],
+    };
+  }
+  if (parts.length === 2) {
+    return {
+      title: parts[0],
+      company: parts[1],
+      dates: "",
+      bullets: [],
+    };
+  }
+  return { title: cleaned, company: "", dates: "", bullets: [] };
+}
+
+function parseProjectLine(line) {
+  const cleaned = line.replace(/^-+\s*/, "").trim();
+  if (!cleaned) {
+    return { name: "", description: "" };
+  }
+  const parts = cleaned.split(/\s+-\s+/);
+  if (parts.length >= 2) {
+    return { name: parts[0].trim(), description: parts.slice(1).join(" - ").trim() };
+  }
+  return { name: cleaned, description: "" };
+}
+
+function parseResume(text) {
+  const parsed = {
+    nameTitle: "",
+    contact: "",
+    experience: [],
+    projects: [],
+    skills: "",
+    education: "",
+  };
+  let currentSection = "";
+  let currentExperience = null;
+
+  const lines = text.split(/\r?\n/);
+  lines.forEach((line) => {
+    const trimmed = line.trim();
+    if (!trimmed) {
+      return;
+    }
+    if (trimmed.startsWith("Name:")) {
+      parsed.nameTitle = trimmed.slice("Name:".length).trim();
+      currentSection = "";
+      currentExperience = null;
+      return;
+    }
+    if (trimmed.startsWith("Contact:")) {
+      parsed.contact = trimmed.slice("Contact:".length).trim();
+      currentSection = "";
+      currentExperience = null;
+      return;
+    }
+    if (trimmed === "Experience:") {
+      currentSection = "experience";
+      currentExperience = null;
+      return;
+    }
+    if (trimmed === "Projects:") {
+      currentSection = "projects";
+      currentExperience = null;
+      return;
+    }
+    if (trimmed.startsWith("Skills:")) {
+      parsed.skills = trimmed.slice("Skills:".length).trim();
+      currentSection = "skills";
+      currentExperience = null;
+      return;
+    }
+    if (trimmed.startsWith("Education:")) {
+      parsed.education = trimmed.slice("Education:".length).trim();
+      currentSection = "education";
+      currentExperience = null;
+      return;
+    }
+
+    if (currentSection === "experience") {
+      if (/^\s+- /.test(line) && currentExperience) {
+        currentExperience.bullets.push(trimmed.replace(/^-+\s*/, "").trim());
+        return;
+      }
+      if (/^- /.test(trimmed)) {
+        currentExperience = parseExperienceLine(trimmed);
+        parsed.experience.push(currentExperience);
+        return;
+      }
+      return;
+    }
+
+    if (currentSection === "projects") {
+      if (/^- /.test(trimmed)) {
+        parsed.projects.push(parseProjectLine(trimmed));
+      }
+      return;
+    }
+
+    if (currentSection === "skills") {
+      parsed.skills = [parsed.skills, trimmed].filter(Boolean).join(", ");
+      return;
+    }
+
+    if (currentSection === "education") {
+      parsed.education = [parsed.education, trimmed].filter(Boolean).join("\n");
+    }
+  });
+
+  if (!parsed.experience.length) {
+    parsed.experience.push({ company: "", title: "", dates: "", bullets: [] });
+  }
+  if (!parsed.projects.length) {
+    parsed.projects.push({ name: "", description: "" });
+  }
+  return parsed;
+}
+
+function setControlValue(selector, value) {
+  const control = document.querySelector(selector);
+  if (control) {
+    control.value = value;
+  }
+}
+
+function renderResumeEditor(parsed) {
+  setControlValue("#resume-name-title", parsed.nameTitle || "");
+  setControlValue("#resume-contact", parsed.contact || "");
+  setControlValue("#resume-skills", parsed.skills || "");
+  setControlValue("#resume-education", parsed.education || "");
+
+  experienceList.innerHTML = "";
+  parsed.experience.forEach((entry) => experienceList.appendChild(createExperienceEntry(entry)));
+
+  projectList.innerHTML = "";
+  parsed.projects.forEach((entry) => projectList.appendChild(createProjectEntry(entry)));
+}
+
+function readTextValue(root, selector) {
+  const control = root.querySelector(selector);
+  return control ? control.value.trim() : "";
+}
+
+function collectExperienceEntries() {
+  return Array.from(experienceList.querySelectorAll("[data-entry-type='experience']")).map((card) => ({
+    company: readTextValue(card, "[name='company']"),
+    title: readTextValue(card, "[name='title']"),
+    dates: readTextValue(card, "[name='dates']"),
+    bullets: readTextValue(card, "[name='bullets']")
+      .split("\n")
+      .map((bullet) => bullet.trim())
+      .filter(Boolean),
+  }));
+}
+
+function collectProjectEntries() {
+  return Array.from(projectList.querySelectorAll("[data-entry-type='project']")).map((card) => ({
+    name: readTextValue(card, "[name='name']"),
+    description: readTextValue(card, "[name='description']"),
+  }));
+}
+
+function serializeResume() {
+  const nameTitle = readTextValue(document, "#resume-name-title");
+  const contact = readTextValue(document, "#resume-contact");
+  const skills = readTextValue(document, "#resume-skills");
+  const education = readTextValue(document, "#resume-education");
+  const experienceEntries = collectExperienceEntries();
+  const projectEntries = collectProjectEntries();
+
+  const lines = [];
+  lines.push(`Name: ${nameTitle}`);
+  if (contact) {
+    lines.push(`Contact: ${contact}`);
+  }
+  lines.push("Experience:");
+  experienceEntries
+    .filter((entry) => entry.company || entry.title || entry.dates || entry.bullets.length)
+    .forEach((entry) => {
+      const headline = [entry.title, entry.company, entry.dates].filter(Boolean).join(", ");
+      lines.push(`- ${headline}`);
+      entry.bullets.forEach((bullet) => {
+        lines.push(`  - ${bullet}`);
+      });
+    });
+  lines.push("Projects:");
+  projectEntries
+    .filter((entry) => entry.name || entry.description)
+    .forEach((entry) => {
+      const projectLine = entry.description ? `${entry.name} - ${entry.description}` : entry.name;
+      lines.push(`- ${projectLine}`);
+    });
+  lines.push(`Skills: ${skills}`);
+  lines.push(`Education: ${education}`);
+  return lines.join("\n").trim();
+}
+
 async function loadTracks() {
   const response = await fetch("/tracks");
   state.tracks = await response.json();
@@ -82,7 +381,7 @@ async function loadTracks() {
   if (initialTrack) {
     state.currentTrackId = initialTrack.id;
     trackSelect.value = String(initialTrack.id);
-    resumeEditor.value = initialTrack.base_resume;
+    renderResumeEditor(parseResume(initialTrack.base_resume));
   }
 }
 
@@ -97,7 +396,7 @@ async function runAnalysis() {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       job_post: jobPost.value,
-      resume: resumeEditor.value,
+      resume: serializeResume(),
       track_id: Number(trackSelect.value),
     }),
   });
@@ -111,8 +410,12 @@ async function saveBaseResume() {
   await fetch(`/tracks/${trackSelect.value}/resume`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ resume: resumeEditor.value }),
+    body: JSON.stringify({ resume: serializeResume() }),
   });
+  const track = state.tracks.find((item) => item.id === Number(trackSelect.value));
+  if (track) {
+    track.base_resume = serializeResume();
+  }
   setStatus("Base resume saved for this track.");
 }
 
@@ -152,7 +455,7 @@ trackSelect.addEventListener("change", () => {
   const track = state.tracks.find((item) => item.id === Number(trackSelect.value));
   state.currentTrackId = Number(trackSelect.value);
   if (track) {
-    resumeEditor.value = track.base_resume;
+    renderResumeEditor(parseResume(track.base_resume));
     document.querySelector("#role").value = track.display_name;
   }
   scheduleAnalysis();
@@ -160,9 +463,34 @@ trackSelect.addEventListener("change", () => {
 
 jobPost.addEventListener("input", scheduleAnalysis);
 resumeEditor.addEventListener("input", scheduleAnalysis);
+resumeEditor.addEventListener("click", (event) => {
+  const removeButton = event.target.closest("[data-remove-entry='true']");
+  if (removeButton) {
+    removeButton.closest(".entry-card")?.remove();
+    if (!experienceList.children.length) {
+      experienceList.appendChild(createExperienceEntry());
+    }
+    if (!projectList.children.length) {
+      projectList.appendChild(createProjectEntry());
+    }
+    scheduleAnalysis();
+  }
+});
+
+addExperienceButton.addEventListener("click", () => {
+  experienceList.appendChild(createExperienceEntry());
+  scheduleAnalysis();
+});
+
+addProjectButton.addEventListener("click", () => {
+  projectList.appendChild(createProjectEntry());
+  scheduleAnalysis();
+});
+
 analyzeButton.addEventListener("click", runAnalysis);
 saveResumeButton.addEventListener("click", saveBaseResume);
 logJobButton.addEventListener("click", logJob);
 
 document.querySelector("#date-applied").value = new Date().toISOString().slice(0, 10);
+window.LandedResumeEditor = { parseResume, serializeResume };
 loadTracks().catch((error) => setStatus(`Failed to load tracks: ${error.message}`));
