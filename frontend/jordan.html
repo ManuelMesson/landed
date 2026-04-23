@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Prep with Jordan</title>
+    <link rel="stylesheet" href="/static/style.css" />
+    <script defer src="/static/jordan.js"></script>
+  </head>
+  <body data-page="jordan">
+    <div class="page-shell">
+      <header class="hero compact">
+        <div>
+          <p class="eyebrow">Jordan</p>
+          <h1>Prep with Jordan</h1>
+          <p class="tagline">Warm, direct, and not letting weak answers slide.</p>
+        </div>
+        <nav class="top-nav">
+          <a href="/" class="nav-link">Analyzer</a>
+          <a href="/tracker" class="nav-link">Your Pipeline</a>
+        </nav>
+      </header>
+
+      <main class="jordan-layout">
+        <section class="card jordan-panel">
+          <div class="jordan-state-wrap">
+            <span id="jordan-state" class="jordan-state speaking">Jordan is speaking...</span>
+            <span class="pulse-dot" aria-hidden="true"></span>
+          </div>
+          <h2>Live prep</h2>
+          <p id="current-question" class="question-copy">Loading Jordan...</p>
+          <audio id="jordan-audio" controls preload="auto"></audio>
+          <div id="coaching-copy" class="coaching-copy"></div>
+        </section>
+
+        <section class="card jordan-panel">
+          <label for="answer-text">Your answer</label>
+          <textarea id="answer-text" rows="8" placeholder="Type your answer here if you do not want to use the mic."></textarea>
+          <div class="jordan-controls">
+            <button id="mic-button" class="mic-button" type="button">Your turn.</button>
+            <button id="submit-answer" class="primary-button" type="button">Send answer</button>
+          </div>
+          <p class="mini-label">Mic uses Web Speech API when the browser supports it.</p>
+          <div id="transcript-log" class="transcript-log"></div>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>

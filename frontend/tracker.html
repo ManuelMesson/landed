@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Your Pipeline</title>
+    <link rel="stylesheet" href="/static/style.css" />
+    <script defer src="/static/tracker.js"></script>
+  </head>
+  <body data-page="tracker">
+    <div class="page-shell">
+      <header class="hero compact">
+        <div>
+          <p class="eyebrow">Landed</p>
+          <h1>Your Pipeline</h1>
+        </div>
+        <nav class="top-nav">
+          <a href="/" class="nav-link">Analyzer</a>
+          <a href="/tracker" class="nav-link current">Your Pipeline</a>
+        </nav>
+      </header>
+
+      <main>
+        <section class="toolbar card">
+          <label for="tracker-track-select">Track filter</label>
+          <select id="tracker-track-select"></select>
+          <span id="tracker-summary" class="mini-label"></span>
+        </section>
+
+        <section class="card">
+          <div id="empty-state" class="empty-state hidden">No applications yet. Paste a job post to start.</div>
+          <div class="table-wrap">
+            <table class="pipeline-table">
+              <thead>
+                <tr>
+                  <th>Company</th>
+                  <th>Role</th>
+                  <th>Track</th>
+                  <th>Date</th>
+                  <th>ATS</th>
+                  <th>HM</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="jobs-body"></tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>
