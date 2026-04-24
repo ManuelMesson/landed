@@ -19,11 +19,19 @@ Landed is an AI job search command center for a live demo flow: paste a job post
    `cd backend && uvicorn main:app --reload --port 8000`
 4. Open `http://127.0.0.1:8000`
 
-## Test
+## Testing
 
 Run everything with:
 
 `pytest`
+
+The test suite sets deterministic defaults in `backend/tests/conftest.py` so CI and local runs do not depend on machine-specific paths or real text-to-speech.
+
+Useful env overrides:
+
+- `LANDED_DB_PATH`: custom SQLite path. Tests point this at a temporary database file.
+- `LANDED_AUDIO_DIR`: custom Jordan audio output directory. Tests point this at a temporary directory.
+- `LANDED_DISABLE_TTS=1`: disables `edge_tts` and writes placeholder audio instead. Tests enable this by default to avoid real TTS calls.
 
 ## Render Deploy
 

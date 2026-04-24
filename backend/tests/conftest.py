@@ -11,14 +11,16 @@ if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
 
-@pytest.fixture()
-async def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> httpx.AsyncClient:
-    db_path = tmp_path / "landed.db"
-    audio_dir = tmp_path / "audio"
-    monkeypatch.setenv("LANDED_DB_PATH", str(db_path))
-    monkeypatch.setenv("LANDED_AUDIO_DIR", str(audio_dir))
+@pytest.fixture(autouse=True)
+def _test_env_defaults(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("LANDED_DB_PATH", str(tmp_path / "landed.db"))
+    monkeypatch.setenv("LANDED_AUDIO_DIR", str(tmp_path / "audio"))
     monkeypatch.setenv("LANDED_DISABLE_TTS", "1")
     monkeypatch.setenv("ANTHROPIC_API_KEY", "")
+
+
+@pytest.fixture()
+async def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> httpx.AsyncClient:
     import database
     from main import app
 
