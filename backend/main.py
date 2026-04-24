@@ -29,11 +29,15 @@ logging.basicConfig(level=logging.INFO)
 ROOT = Path(__file__).resolve().parent.parent
 FRONTEND = ROOT / "frontend"
 STATIC = ROOT / "static"
+AUDIO = STATIC / "audio"
+
+AUDIO.mkdir(parents=True, exist_ok=True)
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     """Initialize storage on app startup."""
+    AUDIO.mkdir(parents=True, exist_ok=True)
     database.init_db()
     yield
 
