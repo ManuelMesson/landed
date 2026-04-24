@@ -188,7 +188,7 @@ def build_context(mode: str, context_id: int) -> tuple[str, str]:
     return summary, track.base_resume
 
 
-def _call_claude_coaching(transcript: list[dict], context_summary: str, resume: str, session_complete: bool, exchange_count: int = 0) -> tuple[str, str]:
+def _call_claude_coaching(transcript: list[dict], context_summary: str, resume: str, session_complete: bool, exchange_count: int = 0, fit_level: str = "good") -> tuple[str, str]:
     """Call Claude API to generate real coaching + next question from full conversation history."""
     api_key = os.getenv("ANTHROPIC_API_KEY")
     if not api_key:
@@ -238,9 +238,36 @@ def _call_claude_coaching(transcript: list[dict], context_summary: str, resume: 
     if messages[-1]["role"] != "user":
         raise ValueError("Transcript does not end on a user turn")
 
-    # If session is closing, tell Claude via the system prompt extension (not fake turns)
     system = SYSTEM_PROMPT
-    if session_complete:
+
+    # Career navigation mode — pivot or mismatch sessions have a different arc
+    if fit_level == "mismatch":
+        system = (
+            "You are Jordan, a career coach running a career navigation session — NOT an interview prep session. "
+            "The candidate is looking at a role that doesn't match their background. Don't prep them for an interview they won't get. "
+            "Your job this session: (1) Help them understand why this specific role isn't the right target yet. Be honest, not harsh. "
+            "(2) Ask what their actual career goal is. Where do they want to be in 1-2 years? "
+            "(3) Based on their resume, identify the realistic path: what roles should they target first, and what skills or experience would bridge the gap. "
+            "(4) End the session with a concrete next action — one thing they can do this week. "
+            "Be warm and direct. This person deserves honesty more than false prep. "
+            "Format: coaching observation or question (2-3 sentences), then one follow-up question ending in ?."
+        )
+    elif fit_level == "pivot":
+        system = SYSTEM_PROMPT + (
+            "\n\nCARREER PIVOT MODE: This candidate is making a non-traditional career change. "
+            "Your extra job: help them build the bridge narrative — the one paragraph that connects their past to this role. "
+            "Every session should move toward: a clear, confident answer to 'your background is different from what we usually see — why are you the right person for this?' "
+            "Push them to own the pivot story, not apologize for it. Manuel went from dishwasher to barista to software builder — that's not a gap, that's a story. Help them find their version of that."
+        )
+
+    if fit_level == "mismatch" and session_complete:
+        system += (
+            "\n\nFINAL EXCHANGE of a career navigation session. "
+            "Wrap up with: (1) the one role they should actually be targeting right now based on their background, "
+            "(2) the one skill or experience gap they need to close to get to their bigger goal, "
+            "(3) one concrete action they can take this week. Be specific. End with encouragement — redirect, not rejection."
+        )
+    elif session_complete:
         system += (
             "\n\nFINAL EXCHANGE. Three things: "
             "(1) Rate their last answer (X/10) and name the one thing that kept showing up all session — the pattern that will cost them in the real interview. "
@@ -304,35 +331,84 @@ def _fallback_coaching(answer: str, exchange_count: int) -> tuple[str, str]:
     return coaching, question
 
 
-def _build_opening_question(context_summary: str, resume: str) -> str:
-    """Generate a job-specific opening question — not a generic 'what draws you here?'"""
+def _build_opening_question(context_summary: str, resume: str, fit_level: str = "good") -> str:
+    """Generate a job-specific opening question adapted to fit level."""
     api_key = os.getenv("ANTHROPIC_API_KEY")
     if not api_key:
-        return "Hey, I'm Jordan. Tell me what specifically about this role made you apply."
+        return "Hey, I'm Jordan. Walk me through what you've been doing and what made you go after this role."
     try:
         from anthropic import Anthropic
         client = Anthropic(api_key=api_key)
+
+        if fit_level == "mismatch":
+            system = (
+                "You are Jordan, a career coach. This candidate is looking at a job they're not qualified for right now. "
+                "Don't prep them for an interview they won't get. Instead, open a career navigation conversation. "
+                "Start with 'Hey, I'm Jordan.' then ask them honestly: what's their actual goal? Where do they want to be? "
+                "Make it warm — you're not rejecting them, you're redirecting their energy. Under 2 sentences. "
+                "Example: 'Hey, I'm Jordan. Before we dig in — this role isn't the right target yet, and I'd rather help you get where you actually want to go. What's the job you're really after?'"
+            )
+        elif fit_level == "pivot":
+            system = (
+                "You are Jordan, an interview coach. This candidate is making a career pivot — non-traditional background for this role. "
+                "Open with 'Hey, I'm Jordan.' then ask them to walk through their story specifically as a pivot narrative. "
+                "The first question should surface HOW they're connecting their past to this new direction. "
+                "Example: 'Hey, I'm Jordan. You're coming from a different background than what this role usually sees — walk me through how you're connecting what you've done to why you're the right person for this.' Under 2 sentences."
+            )
+        else:
+            system = (
+                "You are Jordan, an interview coach opening a mock interview session. "
+                "Generate ONE warm but specific opening question — the kind a good hiring manager asks in the first 2 minutes to understand who you're talking to. "
+                "Ask them to walk you through their background briefly, tied to something specific about this role or company. "
+                "Do NOT go straight to the hardest gap question — that comes later. "
+                "Do NOT use generic 'tell me about yourself' — make it specific to the role context. "
+                "Start with 'Hey, I'm Jordan.' Under 2 sentences."
+            )
+
         response = client.messages.create(
             model="claude-sonnet-4-20250514",
             max_tokens=150,
-            system=(
-                "You are Jordan, an interview coach opening a mock interview session. "
-                "Generate ONE warm but specific opening question — the kind a good hiring manager asks in the first 2 minutes to understand who you're talking to. "
-                "Ask them to walk you through their background briefly, and tie it to something specific about this role or company. "
-                "Do NOT go straight to the hardest gap question — that comes later. "
-                "Do NOT ask generic 'tell me about yourself' — make it specific to the role context. "
-                "Example tone: 'Hey, I'm Jordan. Walk me through what you've been doing for the past couple of years, and tell me what specifically about [company/role] made you go after it.' "
-                "Adjust for the actual company and role. Start with 'Hey, I'm Jordan.' Under 2 sentences."
-            ),
+            system=system,
             messages=[{"role": "user", "content": f"Context: {context_summary}\n\nResume:\n{resume}"}],
         )
         return response.content[0].text.strip()
     except Exception as exc:
         LOGGER.warning("Opening question Claude call failed: %s", exc)
+        if fit_level == "mismatch":
+            return "Hey, I'm Jordan. Before we prep — this role isn't the right target yet. What's the job you're actually trying to get to?"
+        if fit_level == "pivot":
+            return "Hey, I'm Jordan. You're making a pivot here — walk me through how you're connecting your background to this direction."
         return "Hey, I'm Jordan. Walk me through what you've been doing for the past couple of years, and tell me what specifically about this role made you go after it."
 
 
-def _build_warmup(context_summary: str, resume: str) -> str:
+def _assess_fit(context_summary: str, resume: str) -> str:
+    """Return 'good', 'pivot', or 'mismatch' based on how well the candidate fits the role."""
+    api_key = os.getenv("ANTHROPIC_API_KEY")
+    if not api_key:
+        return "good"
+    try:
+        from anthropic import Anthropic
+        client = Anthropic(api_key=api_key)
+        response = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=10,
+            system=(
+                "You are assessing how well a candidate's background matches a job. "
+                "Reply with ONLY one word: 'good' (strong match, they should apply), "
+                "'pivot' (career change — adjacent skills, needs a bridge narrative, possible with the right framing), "
+                "or 'mismatch' (completely wrong field — credentials they don't have and can't quickly get, applying is a waste of time). "
+                "Be honest. A career changer with transferable skills is 'pivot', not 'mismatch'."
+            ),
+            messages=[{"role": "user", "content": f"Context: {context_summary}\n\nResume:\n{resume}"}],
+        )
+        result = response.content[0].text.strip().lower()
+        return result if result in ("good", "pivot", "mismatch") else "good"
+    except Exception as exc:
+        LOGGER.warning("Fit assessment failed: %s", exc)
+        return "good"
+
+
+def _build_warmup(context_summary: str, resume: str, fit_level: str = "good") -> str:
     """Generate a Jordan warmup briefing using real resume context."""
     api_key = os.getenv("ANTHROPIC_API_KEY")
     if not api_key:
@@ -340,16 +416,39 @@ def _build_warmup(context_summary: str, resume: str) -> str:
     try:
         from anthropic import Anthropic
         client = Anthropic(api_key=api_key)
-        response = client.messages.create(
-            model="claude-sonnet-4-20250514",
-            max_tokens=280,
-            system=(
+
+        if fit_level == "mismatch":
+            system = (
+                "You are Jordan, a career coach. The candidate is looking at a job that's a poor fit for their background. "
+                "Write 3 sentences that are honest and helpful — not harsh. "
+                "Sentence 1: Name the core reason this role isn't the right target right now (missing credential, wrong field, etc.). Be specific, not vague. "
+                "Sentence 2: Identify what they DO have going for them based on their actual resume — name real companies or projects. "
+                "Sentence 3: Point them toward a better first target or the step they'd need to take to eventually get there. "
+                "Sound like a coach who wants them to win, not one who's dismissing them. "
+                "End with: tell them the session can still help — not for this job, but to sharpen how they tell their story for the right target."
+            )
+        elif fit_level == "pivot":
+            system = (
+                "You are Jordan, an interview coach. The candidate is making a career pivot — they don't have the traditional background but have transferable skills. "
+                "Write 3 sentences that set them up for a pivot narrative. "
+                "Sentence 1: Name the specific requirement from this job that will be the hardest to explain without the traditional background. "
+                "Sentence 2: Name the strongest transferable skill or experience from their actual resume (specific company or project) and explain why it matters for this role. "
+                "Sentence 3: Name the bridge narrative they need to build — the one sentence that connects their past to this role. "
+                "Sound like a coach who believes in the pivot but is clear-eyed about what it takes."
+            )
+        else:
+            system = (
                 "You are Jordan, an interview coach. Write a 3-sentence warmup that proves you read both the job post and the resume. "
                 "Sentence 1: Name a specific requirement or phrase FROM the job post and say what it actually means they'll ask. "
                 "Sentence 2: Name which of the candidate's real experiences (specific company or project) is the strongest match and why. "
                 "Sentence 3: Name the one gap that's most likely to get them rejected — be blunt. "
                 "Sound like a coach who did their homework, not a template. No generic phrases like 'this role values communication.'"
-            ),
+            )
+
+        response = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=320,
+            system=system,
             messages=[{"role": "user", "content": f"Context: {context_summary}\n\nResume:\n{resume}"}],
         )
         return response.content[0].text.strip()
@@ -432,24 +531,30 @@ async def start_session(mode: str, context_id: int) -> JordanStartResponse:
     track_key = _get_track_key(mode, context_id)
     prior_profile = database.get_candidate_profile(track_key)
 
-    # Personalize warmup based on history
+    # Assess how well the candidate fits this role
+    fit_level = _assess_fit(context_summary=context_summary, resume=resume)
+
+    # Personalize warmup based on history + fit level
     if prior_profile and prior_profile.session_count > 0:
         weakness_hint = f" Last time your main weakness was: {prior_profile.known_weaknesses[0]}." if prior_profile.known_weaknesses else ""
         warmup_text = _build_warmup(
             context_summary=context_summary + weakness_hint,
             resume=resume,
+            fit_level=fit_level,
         )
     else:
-        warmup_text = _build_warmup(context_summary=context_summary, resume=resume)
+        warmup_text = _build_warmup(context_summary=context_summary, resume=resume, fit_level=fit_level)
 
-    # Opening question — if repeat session, target known weakness directly
-    if prior_profile and prior_profile.session_count > 0 and prior_profile.known_weaknesses:
+    # Opening question — adapt to fit level and session history
+    if fit_level in ("mismatch", "pivot"):
+        opening_question = _build_opening_question(context_summary=context_summary, resume=resume, fit_level=fit_level)
+    elif prior_profile and prior_profile.session_count > 0 and prior_profile.known_weaknesses:
         weakness_context = f"{context_summary} IMPORTANT: This candidate's known weakness is: {prior_profile.known_weaknesses[0]}. Open by targeting that weakness directly."
-        opening_question = _build_opening_question(context_summary=weakness_context, resume=resume)
+        opening_question = _build_opening_question(context_summary=weakness_context, resume=resume, fit_level=fit_level)
     else:
-        opening_question = _build_opening_question(context_summary=context_summary, resume=resume)
+        opening_question = _build_opening_question(context_summary=context_summary, resume=resume, fit_level=fit_level)
 
-    transcript = [{"speaker": "jordan", "text": opening_question}]
+    transcript = [{"speaker": "jordan", "text": opening_question, "fit_level": fit_level}]
     session = database.create_jordan_session(mode=mode, context_id=context_id, transcript=transcript)
 
     return JordanStartResponse(
@@ -478,6 +583,7 @@ async def respond(session_id: int, answer: str) -> JordanRespondResponse:
 
     # Get context from session
     context_summary, resume = build_context(mode=session.mode, context_id=session.context_id)
+    fit_level = session.transcript[0].get("fit_level", "good") if session.transcript else "good"
 
     # Try Claude API first, fall back to static
     try:
@@ -487,6 +593,7 @@ async def respond(session_id: int, answer: str) -> JordanRespondResponse:
             resume=resume,
             session_complete=session_complete,
             exchange_count=exchange_count,
+            fit_level=fit_level,
         )
     except Exception as exc:
         LOGGER.warning("Jordan Claude call failed, using fallback: %s", exc)
