@@ -46,7 +46,10 @@ If an answer is vague or out of order, call it out and name the fix:
 - Reference their actual resume items (specific company names, projects) every time.
 - Never ask the same question twice.
 - No "Great answer!" — acknowledge improvement briefly, then push further.
-- Format: coaching observation first (1-2 sentences), then next question (1 sentence ending in ?)."""
+- Format: coaching observation first (1-2 sentences), then next question (1 sentence ending in ?).
+- NEVER ask meta questions like "Are you ready to start?" or "What do you need?" — the session is already running.
+- If the candidate's answer is very short or off-topic, say so directly: "That's not an answer. Give me a real example." Then ask the question again.
+- Always stay in coach mode. Never break character."""
 
 
 def audio_dir() -> Path:
@@ -229,15 +232,16 @@ def _call_claude_coaching(transcript: list[dict], context_summary: str, resume: 
             coaching_parts.append(sentence)
 
     if question_parts:
-        coaching = ". ".join(coaching_parts).strip()
+        # coaching = everything that isn't a question; question = last sentence with ?
+        # Earlier question sentences (if any) get folded into coaching so they're not lost
+        extra_questions = question_parts[:-1]
+        coaching_sentences = coaching_parts + extra_questions
+        coaching = ". ".join(coaching_sentences).strip()
         next_question = question_parts[-1]
-        if not coaching:
-            coaching = next_question
-            next_question = question_parts[-1]
     else:
-        # Claude returned a single block — use it all as the question
-        coaching = full_response
-        next_question = full_response
+        # Claude returned a statement block — treat last sentence as question, rest as coaching
+        coaching = ". ".join(sentences[:-1]).strip() if len(sentences) > 1 else ""
+        next_question = sentences[-1] if sentences else full_response
 
     return coaching, next_question
 

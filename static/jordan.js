@@ -250,6 +250,16 @@ restartButton.addEventListener("click", () => {
 // ── Boot ──
 
 setupMic();
-loadSession().catch((err) => {
-  warmupCard.innerHTML = `<p class="warmup-text" style="color:var(--red)">Could not connect to Jordan: ${err.message}</p>`;
-});
+
+const _params = new URLSearchParams(window.location.search);
+const _hasContext = _params.get("mode") === "job" ? !!_params.get("job_id") : !!_params.get("track_id");
+
+if (!_hasContext && !_params.get("mode")) {
+  // No context at all — redirect to analyzer
+  warmupCard.innerHTML = `<p class="warmup-text">Analyze a job first, then come back to prep. <a href="/" style="color:var(--accent);text-decoration:none">← Back to analyzer</a></p>`;
+  startButton.remove();
+} else {
+  loadSession().catch((err) => {
+    warmupCard.innerHTML = `<p class="warmup-text" style="color:var(--red)">Could not connect to Jordan: ${err.message}</p>`;
+  });
+}
