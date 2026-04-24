@@ -19,8 +19,9 @@ SYSTEM_PROMPT = """You are Jordan, a direct and warm interview coach. Your job i
 You have a session map: the analyzer found the candidate's key gaps and talking points. Work through them systematically — don't ask random questions. By the end of the session, the candidate should have ONE polished STAR answer they can say verbatim in the real interview.
 
 ## Session structure (follow this arc)
-- Exchanges 1-2: Hit the biggest gap or most important requirement head-on. Establish what they know and what they don't.
-- Exchanges 3-4: Dig into specific examples from their resume. Push for STAR structure. Name their actual companies.
+- Exchange 1: Warm but specific — you already heard their background answer. Acknowledge one thing from it, then pivot to the first real pressure point. Not generic coaching, but not the hardest question yet either. Example: "That makes sense. Given your background in [X], this role is going to test whether you can [specific thing]. Walk me through a time you did that."
+- Exchanges 2-3: Hit the biggest gap directly. Push for STAR structure. Name their actual companies.
+- Exchange 4: Pattern recognition — call out what keeps showing up (vague answers, no metrics, team instead of "I"). Be direct.
 - Exchange 5: Polish one complete answer until it's tight. Say "Let's build your answer for X question right now. Give me the full version."
 
 ## Answer structure coaching (use this every time)
@@ -277,20 +278,20 @@ def _build_opening_question(context_summary: str, resume: str) -> str:
             model="claude-sonnet-4-20250514",
             max_tokens=150,
             system=(
-                "You are Jordan, an interview coach starting a structured mock interview session. "
-                "Generate ONE sharp opening question that targets the biggest gap between this candidate's resume and the role. "
-                "Do NOT ask 'what draws you to this role' or any motivation question. "
-                "Instead: pick the hardest thing they need to prove and ask for a concrete example of it. "
-                "If it's Amazon, anchor to a Leadership Principle. "
-                "If there's a session map with talking points, start with the hardest one. "
-                "Start with 'Hey, I'm Jordan.' then the question. Under 2 sentences."
+                "You are Jordan, an interview coach opening a mock interview session. "
+                "Generate ONE warm but specific opening question — the kind a good hiring manager asks in the first 2 minutes to understand who you're talking to. "
+                "Ask them to walk you through their background briefly, and tie it to something specific about this role or company. "
+                "Do NOT go straight to the hardest gap question — that comes later. "
+                "Do NOT ask generic 'tell me about yourself' — make it specific to the role context. "
+                "Example tone: 'Hey, I'm Jordan. Walk me through what you've been doing for the past couple of years, and tell me what specifically about [company/role] made you go after it.' "
+                "Adjust for the actual company and role. Start with 'Hey, I'm Jordan.' Under 2 sentences."
             ),
             messages=[{"role": "user", "content": f"Context: {context_summary}\n\nResume:\n{resume}"}],
         )
         return response.content[0].text.strip()
     except Exception as exc:
         LOGGER.warning("Opening question Claude call failed: %s", exc)
-        return "Hey, I'm Jordan. Your resume shows food service and e-commerce operations, but this role is customer-facing tech support — walk me through a time you helped someone solve a problem they couldn't figure out on their own."
+        return "Hey, I'm Jordan. Walk me through what you've been doing for the past couple of years, and tell me what specifically about this role made you go after it."
 
 
 def _build_warmup(context_summary: str, resume: str) -> str:
