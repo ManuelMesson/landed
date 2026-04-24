@@ -137,8 +137,11 @@ async function loadSession() {
     showPhase(phaseSession);
     setInputEnabled(false);
     setQuestion(data.question_text);
-    audioEl.play().catch(() => {});
-    audioEl.onended = () => setInputEnabled(true);
+    // Always enable input after audio — fallback if audio fails or can't play
+    const enableAfterAudio = () => setInputEnabled(true);
+    audioEl.onended = enableAfterAudio;
+    audioEl.onerror = enableAfterAudio;
+    audioEl.play().catch(() => setInputEnabled(true));
   }, { once: true });
 }
 
@@ -167,23 +170,26 @@ async function sendAnswer(answer) {
     sessionDone = true;
     setQuestion(data.next_question_text);
     audioEl.src = data.audio_url;
-    audioEl.play().catch(() => {});
-    audioEl.onended = () => {
-      // Show summary after last exchange
+    const showSummary = () => {
       const scoreDisplay = data.readiness_score
-      ? `<div class="readiness-score-wrap"><span class="readiness-label">Readiness score</span><span class="readiness-number">${data.readiness_score.toFixed(1)}<span class="readiness-max">/10</span></span></div>`
-      : "";
-    summaryCard.innerHTML = scoreDisplay + formatSummary(data.summary || "");
-    showPhase(phaseSummary);
+        ? `<div class="readiness-score-wrap"><span class="readiness-label">Readiness score</span><span class="readiness-number">${data.readiness_score.toFixed(1)}<span class="readiness-max">/10</span></span></div>`
+        : "";
+      summaryCard.innerHTML = scoreDisplay + formatSummary(data.summary || "");
+      showPhase(phaseSummary);
     };
+    audioEl.onended = showSummary;
+    audioEl.onerror = showSummary;
+    audioEl.play().catch(showSummary);
   } else {
     setQuestion(data.next_question_text);
     audioEl.src = data.audio_url;
-    audioEl.play().catch(() => {});
-    audioEl.onended = () => {
+    const enableInput = () => {
       setInputEnabled(true);
       retryButton.classList.remove("hidden");
     };
+    audioEl.onended = enableInput;
+    audioEl.onerror = enableInput;
+    audioEl.play().catch(enableInput);
   }
 }
 

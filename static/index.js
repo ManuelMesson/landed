@@ -119,14 +119,25 @@ function renderAnalysis(payload) {
 
   const jobIntel = document.querySelector("#job-intel");
   if (jobIntel) {
-    jobIntel.classList.remove("hidden");
-    const company = payload.company_name || "Unknown company";
+    const company = payload.company_name;
     const role    = payload.role_title || "";
-    document.querySelector("#intel-company").textContent = role ? `${company} — ${role}` : company;
-    document.querySelector("#intel-style").textContent = payload.interview_style || "Standard behavioral interviews";
-    if (payload.company_values && payload.company_values.length > 0) {
-      document.querySelector("#intel-values").textContent = payload.company_values.slice(0, 4).join(" · ");
-      document.querySelector("#intel-values-row").classList.remove("hidden");
+    const style   = payload.interview_style;
+
+    // Only show intel card if we have at least one real value
+    if (company || role || style) {
+      jobIntel.classList.remove("hidden");
+      const companyDisplay = company ? (role ? `${company} — ${role}` : company) : role || "";
+      if (companyDisplay) document.querySelector("#intel-company").textContent = companyDisplay;
+      else document.querySelector("#intel-company").closest(".intel-row")?.classList.add("hidden");
+      if (style) {
+        document.querySelector("#intel-style").textContent = style;
+      } else {
+        document.querySelector("#intel-style").closest(".intel-row")?.classList.add("hidden");
+      }
+      if (payload.company_values && payload.company_values.length > 0) {
+        document.querySelector("#intel-values").textContent = payload.company_values.slice(0, 4).join(" · ");
+        document.querySelector("#intel-values-row").classList.remove("hidden");
+      }
     }
   }
 
