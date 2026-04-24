@@ -1,9 +1,56 @@
+const RESUME_KEY = "landed_user_resume";
+
 const state = {
   tracks: [],
   currentTrackId: null,
   currentAnalysis: null,
   debounceId: null,
 };
+
+// ── Resume storage ──
+function getUserResume() {
+  return localStorage.getItem(RESUME_KEY) || "";
+}
+
+function saveUserResume(text) {
+  if (text.trim()) localStorage.setItem(RESUME_KEY, text.trim());
+}
+
+// ── Onboarding ──
+function showOnboarding() {
+  const overlay = document.querySelector("#onboarding-overlay");
+  overlay.classList.remove("hidden");
+}
+
+function hideOnboarding() {
+  const overlay = document.querySelector("#onboarding-overlay");
+  overlay.classList.add("hidden");
+}
+
+function initOnboarding() {
+  const overlay  = document.querySelector("#onboarding-overlay");
+  const textarea = document.querySelector("#onboarding-resume");
+  const submit   = document.querySelector("#onboarding-submit");
+  const editBtn  = document.querySelector("#edit-resume-btn");
+
+  if (!getUserResume()) {
+    showOnboarding();
+  }
+
+  submit.addEventListener("click", () => {
+    const resume = textarea.value.trim();
+    if (!resume) { showToast("Paste your resume first.", "error"); return; }
+    saveUserResume(resume);
+    hideOnboarding();
+    loadTracks().catch(console.error);
+    showToast("Resume saved ✓");
+  });
+
+  editBtn?.addEventListener("click", () => {
+    textarea.value = getUserResume();
+    showOnboarding();
+  });
+}
 
 // ── Toast system ──
 function showToast(message, type = "success") {
@@ -106,6 +153,30 @@ function renderAnalysis(payload) {
 
   const roleSummary = document.querySelector("#role-summary");
   if (roleSummary) roleSummary.textContent = payload.role_summary || "";
+
+  // Auto-fill log form from extracted job info
+  const companyInput = document.querySelector("#company");
+  const roleInput = document.querySelector("#role");
+  if (companyInput && payload.company_name && !companyInput.value) {
+    companyInput.value = payload.company_name;
+  }
+  if (roleInput && payload.role_title && !roleInput.value) {
+    roleInput.value = payload.role_title;
+  }
+
+  // Show "what Jordan found" intel panel
+  const jobIntel = document.querySelector("#job-intel");
+  if (jobIntel) {
+    jobIntel.classList.remove("hidden");
+    const company = payload.company_name || "Unknown company";
+    const role = payload.role_title || "";
+    document.querySelector("#intel-company").textContent = role ? `${company} — ${role}` : company;
+    document.querySelector("#intel-style").textContent = payload.interview_style || "Standard behavioral interviews";
+    if (payload.company_values && payload.company_values.length > 0) {
+      document.querySelector("#intel-values").textContent = payload.company_values.slice(0, 4).join(" · ");
+      document.querySelector("#intel-values-row").classList.remove("hidden");
+    }
+  }
 
   renderList("key-requirements", payload.key_requirements);
   renderList("your-strengths", payload.your_strengths);
@@ -426,13 +497,21 @@ async function loadTracks() {
   if (initialTrack) {
     state.currentTrackId = initialTrack.id;
     trackSelect.value = String(initialTrack.id);
-    renderResumeEditor(parseResume(initialTrack.base_resume));
+    // Use localStorage resume if available, else fall back to track's base resume
+    const resumeToLoad = getUserResume() || initialTrack.base_resume;
+    renderResumeEditor(parseResume(resumeToLoad));
   }
 }
 
 async function runAnalysis() {
   if (!jobPost.value.trim()) {
     showToast("Paste a job post first.", "error");
+    return;
+  }
+  const resume = getUserResume() || serializeResume();
+  if (!resume) {
+    showToast("Add your resume first.", "error");
+    showOnboarding();
     return;
   }
   setButtonLoading(analyzeButton, true);
@@ -443,7 +522,7 @@ async function runAnalysis() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         job_post: jobPost.value,
-        resume: serializeResume(),
+        resume,
         track_id: Number(trackSelect.value),
       }),
     });
@@ -458,13 +537,15 @@ async function runAnalysis() {
 }
 
 async function saveBaseResume() {
+  const resume = serializeResume();
+  saveUserResume(resume);
   await fetch(`/tracks/${trackSelect.value}/resume`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ resume: serializeResume() }),
+    body: JSON.stringify({ resume }),
   });
   const track = state.tracks.find((item) => item.id === Number(trackSelect.value));
-  if (track) track.base_resume = serializeResume();
+  if (track) track.base_resume = resume;
   showToast("Resume saved ✓");
 }
 
@@ -540,6 +621,68 @@ analyzeButton.addEventListener("click", runAnalysis);
 saveResumeButton.addEventListener("click", saveBaseResume);
 logJobButton.addEventListener("click", logJob);
 
+// Fix my resume
+document.querySelector("#fix-resume-btn")?.addEventListener("click", async () => {
+  if (!state.currentAnalysis) { showToast("Run Analyze first.", "error"); return; }
+  const btn = document.querySelector("#fix-resume-btn");
+  const label = btn.querySelector(".btn-label-fix");
+  const spinner = btn.querySelector(".btn-spinner");
+  btn.disabled = true;
+  if (label) label.textContent = "Analyzing...";
+  if (spinner) spinner.classList.remove("hidden");
+
+  try {
+    const resume = getUserResume() || serializeResume();
+    const res = await fetch("/resume-fix", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        job_post: jobPost.value,
+        resume,
+        gaps: state.currentAnalysis.gaps_to_address || [],
+        key_requirements: state.currentAnalysis.key_requirements || [],
+      }),
+    });
+    const data = await res.json();
+    renderResumeFixes(data.fixes || []);
+  } catch (e) {
+    showToast("Could not generate fixes. Try again.", "error");
+  } finally {
+    btn.disabled = false;
+    if (label) label.textContent = "✍️ Fix my resume";
+    if (spinner) spinner.classList.add("hidden");
+  }
+});
+
+function renderResumeFixes(fixes) {
+  const panel = document.querySelector("#resume-fix-panel");
+  if (!panel) return;
+  if (!fixes.length) {
+    panel.innerHTML = `<div class="fix-empty">Jordan couldn't generate specific fixes. Try with a more detailed job post.</div>`;
+    panel.classList.remove("hidden");
+    return;
+  }
+  panel.innerHTML = `
+    <div class="fix-panel-header">
+      <span class="fix-panel-title">✍️ Resume fixes from Jordan</span>
+      <span class="fix-panel-sub">3 specific edits to improve your match score</span>
+    </div>
+    ${fixes.map((fix, i) => `
+      <div class="fix-card reveal">
+        <div class="fix-number">${i + 1}</div>
+        <div class="fix-body">
+          <div class="fix-section">${fix.section || "Resume"}</div>
+          <div class="fix-issue">${fix.issue || ""}</div>
+          <div class="fix-text">${fix.fix || ""}</div>
+          <div class="fix-impact">↑ ${fix.impact || ""}</div>
+        </div>
+      </div>
+    `).join("")}
+  `;
+  panel.classList.remove("hidden");
+  panel.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
 // Tune panel
 document.querySelector("#tune-button")?.addEventListener("click", () => {
   showStage("stage-tune");
@@ -560,4 +703,7 @@ const dateApplied = document.querySelector("#date-applied");
 if (dateApplied) dateApplied.value = new Date().toISOString().slice(0, 10);
 
 window.LandedResumeEditor = { parseResume, serializeResume };
-loadTracks().catch((error) => setStatus(`Failed to load tracks: ${error.message}`));
+initOnboarding();
+if (getUserResume()) {
+  loadTracks().catch((error) => setStatus(`Failed to load tracks: ${error.message}`));
+}

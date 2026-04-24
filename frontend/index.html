@@ -13,11 +13,27 @@
 
     <div id="toast-container"></div>
 
+    <!-- ── Onboarding modal (first visit) ── -->
+    <div id="onboarding-overlay" class="onboarding-overlay hidden">
+      <div class="onboarding-card">
+        <div class="onboarding-logo">Landed</div>
+        <h2 class="onboarding-title">Your AI job search co-pilot.</h2>
+        <p class="onboarding-sub">Paste your resume once. Then paste any job post and get an instant fit score, resume suggestions, and interview prep with Jordan.</p>
+        <label class="onboarding-label" for="onboarding-resume">Paste your resume</label>
+        <textarea id="onboarding-resume" class="onboarding-textarea" placeholder="Copy and paste your full resume here — work experience, skills, education, projects..."></textarea>
+        <button id="onboarding-submit" class="cta-button" type="button" style="width:100%;justify-content:center">
+          Let's go →
+        </button>
+        <p class="onboarding-note">Your resume is saved in your browser. Nothing is stored on our servers until you log a job.</p>
+      </div>
+    </div>
+
     <!-- ── Minimal header ── -->
     <header class="top-bar">
       <span class="wordmark">Landed</span>
       <div class="top-bar-right">
         <select id="track-select" class="track-pill"></select>
+        <button id="edit-resume-btn" class="nav-pill" type="button" style="cursor:pointer;border:none">Edit resume</button>
         <a href="/tracker" class="nav-pill">Pipeline →</a>
       </div>
     </header>
@@ -58,12 +74,35 @@
 
         <p id="role-summary" class="role-summary-text"></p>
 
+        <!-- What Jordan found in the job post -->
+        <div id="job-intel" class="job-intel hidden">
+          <div class="intel-row">
+            <span class="intel-label">Company</span>
+            <span id="intel-company" class="intel-value">—</span>
+          </div>
+          <div class="intel-row">
+            <span class="intel-label">Interview style</span>
+            <span id="intel-style" class="intel-value">—</span>
+          </div>
+          <div id="intel-values-row" class="intel-row hidden">
+            <span class="intel-label">Values</span>
+            <span id="intel-values" class="intel-value"></span>
+          </div>
+        </div>
+
         <!-- One primary action at a time -->
         <div class="action-strip">
-          <button id="tune-button" class="action-pill action-secondary" type="button">✏️ Tune resume</button>
+          <button id="fix-resume-btn" class="action-pill action-secondary" type="button">
+            <span class="btn-label-fix">✍️ Fix my resume</span>
+            <span class="btn-spinner hidden"></span>
+          </button>
+          <button id="tune-button" class="action-pill action-secondary" type="button">✏️ Edit resume</button>
           <button id="log-job" class="action-pill action-secondary" type="button">📋 Log this job</button>
           <a href="/jordan" class="action-pill action-primary">🎙 Prep with Jordan →</a>
         </div>
+
+        <!-- Resume fix panel -->
+        <div id="resume-fix-panel" class="hidden"></div>
       </section>
 
       <!-- ── STAGE 3: Resume tuner (slides in) ── -->

@@ -81,12 +81,16 @@ def build_fallback_analysis(job_post: str, resume: str, track_label: str) -> Ana
     return AnalysisResult(
         ats_score=ats_score,
         hm_score=hm_score,
+        company_name="",
+        role_title="",
         role_summary=summary,
         key_requirements=missing[:3] + strongest[:2],
         your_strengths=strongest,
         gaps_to_address=biggest_gaps,
         talking_points=talking_points,
         red_flags=red_flags or ["No major red flags beyond tightening job-specific language."],
+        company_values=[],
+        interview_style="",
     )
 
 
@@ -101,9 +105,25 @@ def _call_claude(job_post: str, resume: str, track_label: str) -> AnalysisResult
         raise RuntimeError("anthropic package not installed") from exc
     client = Anthropic(api_key=api_key)
     prompt = (
-        "You are Landed, an exacting job application coach. Compare the job post to the resume. "
-        "Return JSON only with keys: ats_score, hm_score, role_summary, key_requirements, "
-        "your_strengths, gaps_to_address, talking_points, red_flags. "
+        "You are Landed, an exacting job application coach. Analyze this job post against the resume.\n\n"
+        "Return JSON only with these keys:\n"
+        "- ats_score: int 0-100 (keyword match)\n"
+        "- hm_score: float 0-10 (hiring manager fit)\n"
+        "- company_name: string (extract from job post, e.g. 'Amazon', 'ServiceTitan')\n"
+        "- role_title: string (exact job title from posting)\n"
+        "- role_summary: string (1-2 sentences on what this role is)\n"
+        "- key_requirements: list of strings (top 4-5 skills/experience they need)\n"
+        "- your_strengths: list of strings (where this resume matches well)\n"
+        "- gaps_to_address: list of strings (what's missing or weak)\n"
+        "- talking_points: list of strings (specific things to say in interview)\n"
+        "- red_flags: list of strings (anything that could hurt the application)\n"
+        "- company_values: list of strings (company's stated values, culture pillars, or principles "
+        "— e.g. Amazon's Leadership Principles, Salesforce's Ohana, etc. Extract from job post language. "
+        "If not explicit, infer from how they describe the role and team.)\n"
+        "- interview_style: string (describe how this company likely interviews — "
+        "e.g. 'Amazon uses behavioral STAR questions tied to Leadership Principles', "
+        "'startup-style, fast, values scrappiness and ownership', "
+        "'structured panel with product and technical rounds')\n\n"
         f"Track: {track_label}\nJob post:\n{job_post}\n\nResume:\n{resume}"
     )
     response = client.messages.create(
@@ -114,6 +134,52 @@ def _call_claude(job_post: str, resume: str, track_label: str) -> AnalysisResult
     text = response.content[0].text
     payload = json.loads(text)
     return AnalysisResult.model_validate(payload)
+
+
+def fix_resume_for_job(job_post: str, resume: str, gaps: list[str], key_requirements: list[str]) -> list[dict]:
+    """Return 3 specific resume edits to improve ATS and HM score for this job."""
+    api_key = os.getenv("ANTHROPIC_API_KEY")
+    if not api_key:
+        return []
+    try:
+        from anthropic import Anthropic
+        client = Anthropic(api_key=api_key)
+        gaps_text = ", ".join(gaps[:3]) if gaps else "missing keywords"
+        reqs_text = ", ".join(key_requirements[:4]) if key_requirements else "key requirements"
+        prompt = (
+            f"Job post:\n{job_post}\n\n"
+            f"Current resume:\n{resume}\n\n"
+            f"Known gaps: {gaps_text}\n"
+            f"Key requirements they need: {reqs_text}\n\n"
+            "Give exactly 3 resume fixes. Return JSON array only:\n"
+            '[{"section": "which section to edit", "issue": "what is wrong or missing", '
+            '"fix": "exact replacement text or addition — write it out completely, ready to paste", '
+            '"impact": "why this will improve their score"}]'
+        )
+        response = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=600,
+            system=(
+                "You are a resume editor who specializes in making resumes match specific job postings. "
+                "Give concrete, specific edits — write out the exact text the candidate should use. "
+                "Do not give vague advice like 'add more metrics.' Write the actual metric: "
+                "'Change \"managed bakery operations\" to \"managed daily e-commerce operations for 200+ online orders, "
+                "reducing processing time by 30%\"'. "
+                "Focus on: (1) adding missing keywords from the job post, (2) rewriting vague bullets with specifics, "
+                "(3) repositioning experience to match the role. Return valid JSON only."
+            ),
+            messages=[{"role": "user", "content": prompt}],
+        )
+        import json as _json
+        text = response.content[0].text.strip()
+        if text.startswith("```"):
+            text = text.split("```")[1]
+            if text.startswith("json"):
+                text = text[4:]
+        return _json.loads(text.strip())
+    except Exception as exc:
+        LOGGER.warning("Resume fix Claude call failed: %s", exc)
+        return []
 
 
 def analyze_job_post(job_post: str, resume: str, track_label: str) -> AnalysisResult:

@@ -12,7 +12,7 @@ from fastapi.staticfiles import StaticFiles
 
 import database
 import jordan
-from analyzer import analyze_job_post
+from analyzer import analyze_job_post, fix_resume_for_job
 from models import (
     AnalyzeRequest,
     HealthResponse,
@@ -116,6 +116,29 @@ async def get_job(job_id: int) -> dict:
     if job is None:
         raise HTTPException(status_code=404, detail="Job not found")
     return job.model_dump(mode="json")
+
+
+@app.post("/resume-fix")
+async def resume_fix(request: dict) -> dict:
+    """Return 3 specific resume edits tailored to a job post."""
+    job_post = request.get("job_post", "")
+    resume = request.get("resume", "")
+    gaps = request.get("gaps", [])
+    key_requirements = request.get("key_requirements", [])
+    if not job_post or not resume:
+        raise HTTPException(status_code=422, detail="job_post and resume required")
+    fixes = fix_resume_for_job(job_post=job_post, resume=resume, gaps=gaps, key_requirements=key_requirements)
+    return {"fixes": fixes}
+
+
+@app.get("/jordan/profile/{mode}/{context_id}")
+async def jordan_profile(mode: str, context_id: int) -> dict:
+    """Return Jordan coaching history for a job or track."""
+    track_key = f"{mode}:{context_id}"
+    profile = database.get_candidate_profile(track_key)
+    if profile is None:
+        return {"session_count": 0, "readiness_score": 0, "known_weaknesses": [], "known_strengths": [], "patterns": []}
+    return profile.model_dump()
 
 
 @app.post("/jordan/session/start")

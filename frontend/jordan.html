@@ -7,45 +7,118 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css" />
+    <link rel="stylesheet" href="/static/jordan-ui.css" />
     <script defer src="/static/jordan.js"></script>
   </head>
   <body data-page="jordan">
-    <div class="page-shell">
-      <header class="hero compact">
-        <div>
-          <p class="eyebrow">Jordan</p>
-          <h1>Prep with Jordan</h1>
-          <p class="tagline">Warm, direct, and not letting weak answers slide.</p>
+
+    <!-- ── Top bar ── -->
+    <header class="top-bar">
+      <span class="wordmark">Landed</span>
+      <div class="top-bar-right">
+        <a href="/" class="nav-pill">Analyzer</a>
+        <a href="/tracker" class="nav-pill">Pipeline →</a>
+      </div>
+    </header>
+
+    <main class="jordan-main">
+
+      <!-- ── PHASE 1: Warmup ── -->
+      <section id="phase-warmup" class="jordan-phase">
+        <div class="jordan-avatar">
+          <div class="avatar-ring">
+            <span class="avatar-letter">J</span>
+          </div>
+          <div class="avatar-pulse"></div>
         </div>
-        <nav class="top-nav">
-          <a href="/" class="nav-link">Analyzer</a>
-          <a href="/tracker" class="nav-link">Your Pipeline</a>
-        </nav>
-      </header>
-
-      <main class="jordan-layout">
-        <section class="card jordan-panel">
-          <div class="jordan-state-wrap">
-            <span id="jordan-state" class="jordan-state speaking">Jordan is speaking...</span>
-            <span class="pulse-dot" aria-hidden="true"></span>
+        <h1 class="jordan-name">Jordan</h1>
+        <p class="jordan-tagline">Your interview coach. Warm, direct, no weak answers allowed.</p>
+        <div id="warmup-card" class="warmup-card">
+          <div class="warmup-loading">
+            <div class="skeleton-card" style="height:18px;margin-bottom:10px"></div>
+            <div class="skeleton-card" style="height:18px;width:80%"></div>
           </div>
-          <h2>Live prep</h2>
-          <p id="current-question" class="question-copy">Loading Jordan...</p>
-          <audio id="jordan-audio" controls preload="auto"></audio>
-          <div id="coaching-copy" class="coaching-copy"></div>
-        </section>
+        </div>
+        <button id="start-button" class="cta-button" type="button" disabled>
+          <span class="btn-label">Loading...</span>
+          <span class="btn-spinner hidden"></span>
+        </button>
+      </section>
 
-        <section class="card jordan-panel">
-          <label for="answer-text">Your answer</label>
-          <textarea id="answer-text" rows="8" placeholder="Type your answer here if you do not want to use the mic."></textarea>
-          <div class="jordan-controls">
-            <button id="mic-button" class="mic-button" type="button">Your turn.</button>
-            <button id="submit-answer" class="primary-button" type="button">Send answer</button>
+      <!-- ── PHASE 2: Session ── -->
+      <section id="phase-session" class="jordan-phase hidden">
+
+        <!-- Jordan's current message -->
+        <div class="jordan-bubble-wrap">
+          <div class="jordan-avatar-sm">
+            <span>J</span>
           </div>
-          <p class="mini-label">Mic uses Web Speech API when the browser supports it.</p>
-          <div id="transcript-log" class="transcript-log"></div>
-        </section>
-      </main>
-    </div>
+          <div class="bubble-col">
+            <span class="bubble-name">Jordan</span>
+            <div id="coaching-bubble" class="bubble jordan-coaching hidden"></div>
+            <div id="question-bubble" class="bubble jordan-question">
+              <span id="current-question">Loading...</span>
+            </div>
+            <div id="jordan-thinking" class="bubble jordan-thinking hidden">
+              <span class="thinking-dot"></span>
+              <span class="thinking-dot"></span>
+              <span class="thinking-dot"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- User answers -->
+        <div id="user-messages" class="user-messages"></div>
+
+        <!-- Audio (hidden) -->
+        <audio id="jordan-audio" preload="auto" style="display:none"></audio>
+
+        <!-- Input zone -->
+        <div id="input-zone" class="input-zone">
+          <div class="mic-zone">
+            <button id="mic-button" class="big-mic-button" type="button">
+              <svg class="mic-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                <line x1="12" y1="19" x2="12" y2="23"/>
+                <line x1="8" y1="23" x2="16" y2="23"/>
+              </svg>
+              <span class="mic-label">Hold to speak</span>
+            </button>
+          </div>
+          <div class="text-input-row">
+            <textarea id="answer-text" class="answer-input" rows="2" placeholder="Or type your answer here…"></textarea>
+            <button id="submit-answer" class="send-button" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18">
+                <line x1="22" y1="2" x2="11" y2="13"/>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+              </svg>
+            </button>
+          </div>
+          <button id="retry-button" class="retry-button hidden" type="button">↩ Try that answer again</button>
+        </div>
+
+      </section>
+
+      <!-- ── PHASE 3: Summary ── -->
+      <section id="phase-summary" class="jordan-phase hidden">
+        <div class="jordan-avatar">
+          <div class="avatar-ring avatar-ring-green">
+            <span class="avatar-letter">J</span>
+          </div>
+        </div>
+        <h2 class="summary-title">Session complete.</h2>
+        <div id="summary-card" class="summary-card">
+          <div class="skeleton-card" style="height:16px;margin-bottom:8px"></div>
+          <div class="skeleton-card" style="height:16px;width:90%;margin-bottom:8px"></div>
+          <div class="skeleton-card" style="height:16px;width:70%"></div>
+        </div>
+        <div class="summary-actions">
+          <button id="restart-button" class="action-pill action-secondary" type="button">↩ Run it again</button>
+          <a href="/tracker" class="action-pill action-primary">Go to Pipeline →</a>
+        </div>
+      </section>
+
+    </main>
   </body>
 </html>

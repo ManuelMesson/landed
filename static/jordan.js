@@ -1,30 +1,90 @@
-const stateEl = document.querySelector("#jordan-state");
-const questionEl = document.querySelector("#current-question");
-const audioEl = document.querySelector("#jordan-audio");
-const answerEl = document.querySelector("#answer-text");
-const coachingEl = document.querySelector("#coaching-copy");
-const transcriptEl = document.querySelector("#transcript-log");
-const micButton = document.querySelector("#mic-button");
-const submitButton = document.querySelector("#submit-answer");
+const phaseWarmup  = document.querySelector("#phase-warmup");
+const phaseSession = document.querySelector("#phase-session");
+const phaseSummary = document.querySelector("#phase-summary");
 
-let sessionId = null;
-let recognition = null;
+const startButton    = document.querySelector("#start-button");
+const warmupCard     = document.querySelector("#warmup-card");
+const questionEl     = document.querySelector("#current-question");
+const questionBubble = document.querySelector("#question-bubble");
+const coachingBubble = document.querySelector("#coaching-bubble");
+const thinkingBubble = document.querySelector("#jordan-thinking");
+const userMessages   = document.querySelector("#user-messages");
+const audioEl        = document.querySelector("#jordan-audio");
+const micButton      = document.querySelector("#mic-button");
+const submitButton   = document.querySelector("#submit-answer");
+const answerInput    = document.querySelector("#answer-text");
+const retryButton    = document.querySelector("#retry-button");
+const restartButton  = document.querySelector("#restart-button");
+const summaryCard    = document.querySelector("#summary-card");
 
-function setJordanState(label, tone) {
-  stateEl.textContent = label;
-  stateEl.className = `jordan-state ${tone}`;
+let sessionId    = null;
+let recognition  = null;
+let lastAnswer   = "";
+let sessionDone  = false;
+
+// ── Phase transitions ──
+
+function showPhase(phase) {
+  [phaseWarmup, phaseSession, phaseSummary].forEach(p => p.classList.add("hidden"));
+  phase.classList.remove("hidden");
+  phase.classList.add("reveal");
 }
 
-function appendTranscript(label, text) {
-  transcriptEl.textContent += `${label}: ${text}\n\n`;
+// ── User message bubbles ──
+
+function appendUserBubble(text) {
+  const wrap = document.createElement("div");
+  wrap.className = "user-bubble-wrap reveal";
+  const bubble = document.createElement("div");
+  bubble.className = "bubble user-bubble";
+  bubble.textContent = text;
+  wrap.appendChild(bubble);
+  userMessages.appendChild(wrap);
+  wrap.scrollIntoView({ behavior: "smooth", block: "end" });
 }
 
-async function startSession() {
+// ── Jordan state ──
+
+function setThinking(on) {
+  thinkingBubble.classList.toggle("hidden", !on);
+  questionBubble.classList.toggle("hidden", on);
+  coachingBubble.classList.add("hidden");
+}
+
+function setCoaching(text) {
+  if (!text) { coachingBubble.classList.add("hidden"); return; }
+  coachingBubble.textContent = text;
+  coachingBubble.classList.remove("hidden");
+  coachingBubble.classList.add("reveal");
+}
+
+function setQuestion(text) {
+  questionEl.textContent = text;
+  questionBubble.classList.remove("hidden");
+  questionBubble.classList.add("reveal");
+  thinkingBubble.classList.add("hidden");
+}
+
+function setInputEnabled(on) {
+  micButton.disabled = !on;
+  submitButton.disabled = !on;
+  answerInput.disabled = !on;
+  if (on) {
+    micButton.classList.remove("mic-disabled");
+  } else {
+    micButton.classList.add("mic-disabled");
+  }
+}
+
+// ── Load session ──
+
+async function loadSession() {
   const params = new URLSearchParams(window.location.search);
   const mode = params.get("mode") || "track";
   const payload = mode === "job"
     ? { mode, job_id: Number(params.get("job_id")) }
     : { mode, track_id: Number(params.get("track_id") || 1) };
+
   const response = await fetch("/jordan/session/start", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -32,57 +92,164 @@ async function startSession() {
   });
   const data = await response.json();
   sessionId = data.session_id;
-  questionEl.textContent = data.question_text;
+
+  // Show warmup + score history
+  const scoreHtml = data.session_count > 0
+    ? `<div class="score-history">Session ${data.session_count + 1} · Last readiness score: <strong>${data.readiness_score.toFixed(1)}/10</strong>${data.known_weaknesses.length ? ` · We're targeting: <em>${data.known_weaknesses[0]}</em>` : ""}</div>`
+    : `<div class="score-history first-session">First session — establishing your baseline.</div>`;
+
+  warmupCard.innerHTML = `${scoreHtml}<p class="warmup-text">${data.warmup_text || data.context_summary}</p>`;
+  startButton.querySelector(".btn-label").textContent = data.session_count > 0 ? `Session ${data.session_count + 1}. Let's go.` : "I'm ready. Let's go.";
+  startButton.disabled = false;
+
+  // Pre-load first question audio
   audioEl.src = data.audio_url;
-  appendTranscript("Jordan", data.question_text);
-  setJordanState("Jordan is speaking...", "speaking");
-  audioEl.play().catch(() => {});
-  audioEl.onended = () => setJordanState("Your turn.", "listening");
+
+  startButton.addEventListener("click", () => {
+    showPhase(phaseSession);
+    setInputEnabled(false);
+    setQuestion(data.question_text);
+    audioEl.play().catch(() => {});
+    audioEl.onended = () => setInputEnabled(true);
+  }, { once: true });
 }
 
-async function sendAnswer() {
-  const answer = answerEl.value.trim();
-  if (!answer) return;
-  appendTranscript("You", answer);
-  answerEl.value = "";
-  setJordanState("Jordan is thinking...", "thinking");
+// ── Send answer ──
+
+async function sendAnswer(answer) {
+  if (!answer.trim() || sessionDone) return;
+  lastAnswer = answer.trim();
+
+  appendUserBubble(lastAnswer);
+  answerInput.value = "";
+  retryButton.classList.add("hidden");
+  setInputEnabled(false);
+  setThinking(true);
+
   const response = await fetch("/jordan/session/respond", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ session_id: sessionId, answer }),
+    body: JSON.stringify({ session_id: sessionId, answer: lastAnswer }),
   });
   const data = await response.json();
-  coachingEl.textContent = data.coaching;
-  questionEl.textContent = data.next_question_text;
-  audioEl.src = data.audio_url;
-  appendTranscript("Jordan", `${data.coaching}\n${data.next_question_text}`);
-  setJordanState("Jordan is speaking...", "speaking");
-  audioEl.play().catch(() => {});
-  audioEl.onended = () => setJordanState(data.session_complete ? "Session complete." : "Your turn.", data.session_complete ? "thinking" : "listening");
+
+  setCoaching(data.coaching);
+
+  if (data.session_complete) {
+    sessionDone = true;
+    setQuestion(data.next_question_text);
+    audioEl.src = data.audio_url;
+    audioEl.play().catch(() => {});
+    audioEl.onended = () => {
+      // Show summary after last exchange
+      const scoreDisplay = data.readiness_score
+      ? `<div class="readiness-score-wrap"><span class="readiness-label">Readiness score</span><span class="readiness-number">${data.readiness_score.toFixed(1)}<span class="readiness-max">/10</span></span></div>`
+      : "";
+    summaryCard.innerHTML = scoreDisplay + formatSummary(data.summary || "");
+    showPhase(phaseSummary);
+    };
+  } else {
+    setQuestion(data.next_question_text);
+    audioEl.src = data.audio_url;
+    audioEl.play().catch(() => {});
+    audioEl.onended = () => {
+      setInputEnabled(true);
+      retryButton.classList.remove("hidden");
+    };
+  }
 }
 
-function setupRecognition() {
+function formatSummary(text) {
+  if (!text) return "<p>Session complete. Review your answers and prep with real examples and metrics.</p>";
+  return text
+    .split("\n")
+    .map(line => line.trim())
+    .filter(Boolean)
+    .map(line => {
+      // Render **bold** as <strong>
+      line = line.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+      // Style the emoji section headers
+      if (line.startsWith("✅")) return `<p class="summary-win">${line}</p>`;
+      if (line.startsWith("🔧")) return `<p class="summary-fix">${line}</p>`;
+      if (line.startsWith("💬")) return `<p class="summary-memorize">${line}</p>`;
+      return `<p>${line}</p>`;
+    })
+    .join("");
+}
+
+// ── Mic ──
+
+function setupMic() {
   const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!Recognition) {
-    micButton.disabled = true;
-    micButton.textContent = "Mic unavailable";
+    micButton.querySelector(".mic-label").textContent = "Mic unavailable";
+    micButton.classList.add("mic-disabled");
     return;
   }
   recognition = new Recognition();
   recognition.lang = "en-US";
   recognition.interimResults = false;
-  recognition.onstart = () => setJordanState("Your turn.", "listening");
+
   recognition.onresult = (event) => {
-    answerEl.value = event.results[0][0].transcript;
+    const transcript = event.results[0][0].transcript;
+    answerInput.value = transcript;
+    micButton.classList.remove("mic-active");
+    micButton.querySelector(".mic-label").textContent = "Hold to speak";
   };
-  recognition.onerror = () => setJordanState("Your turn.", "listening");
+
+  recognition.onerror = () => {
+    micButton.classList.remove("mic-active");
+    micButton.querySelector(".mic-label").textContent = "Hold to speak";
+  };
+
+  recognition.onend = () => {
+    micButton.classList.remove("mic-active");
+    micButton.querySelector(".mic-label").textContent = "Hold to speak";
+  };
+
+  micButton.addEventListener("click", () => {
+    if (micButton.disabled) return;
+    if (micButton.classList.contains("mic-active")) {
+      recognition.stop();
+    } else {
+      micButton.classList.add("mic-active");
+      micButton.querySelector(".mic-label").textContent = "Listening...";
+      try { recognition.start(); } catch (_) {}
+    }
+  });
 }
 
-micButton.addEventListener("click", () => recognition && recognition.start());
-submitButton.addEventListener("click", sendAnswer);
+// ── Event listeners ──
 
-setupRecognition();
-startSession().catch((error) => {
-  questionEl.textContent = `Jordan could not start: ${error.message}`;
-  setJordanState("Jordan is thinking...", "thinking");
+submitButton.addEventListener("click", () => sendAnswer(answerInput.value));
+
+answerInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    sendAnswer(answerInput.value);
+  }
+});
+
+retryButton.addEventListener("click", () => {
+  answerInput.value = "";
+  answerInput.focus();
+  retryButton.classList.add("hidden");
+});
+
+restartButton.addEventListener("click", () => {
+  sessionId = null;
+  sessionDone = false;
+  userMessages.innerHTML = "";
+  coachingBubble.classList.add("hidden");
+  showPhase(phaseWarmup);
+  startButton.disabled = true;
+  startButton.querySelector(".btn-label").textContent = "Loading...";
+  loadSession().catch(console.error);
+});
+
+// ── Boot ──
+
+setupMic();
+loadSession().catch((err) => {
+  warmupCard.innerHTML = `<p class="warmup-text" style="color:var(--red)">Could not connect to Jordan: ${err.message}</p>`;
 });

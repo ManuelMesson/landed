@@ -17,12 +17,16 @@ class PositionTrack(BaseModel):
 class AnalysisResult(BaseModel):
     ats_score: int = Field(ge=0, le=100)
     hm_score: float = Field(ge=0.0, le=10.0)
+    company_name: str = ""
+    role_title: str = ""
     role_summary: str
     key_requirements: list[str]
     your_strengths: list[str]
     gaps_to_address: list[str]
     talking_points: list[str]
     red_flags: list[str]
+    company_values: list[str] = []
+    interview_style: str = ""
 
 
 class AnalyzeRequest(BaseModel):
@@ -85,6 +89,11 @@ class JordanStartResponse(BaseModel):
     question_text: str
     audio_url: str
     prefetched_audio_urls: list[str] = Field(default_factory=list)
+    warmup_text: str = ""
+    context_summary: str = ""
+    readiness_score: float = 0
+    session_count: int = 0
+    known_weaknesses: list[str] = []
 
 
 class JordanRespondRequest(BaseModel):
@@ -97,6 +106,20 @@ class JordanRespondResponse(BaseModel):
     next_question_text: str
     audio_url: str
     session_complete: bool
+    summary: str | None = None
+    readiness_score: float | None = None
+
+
+class CandidateProfile(BaseModel):
+    id: int
+    track_key: str
+    readiness_score: float = 0
+    session_count: int = 0
+    known_strengths: list[str] = []
+    known_weaknesses: list[str] = []
+    patterns: list[str] = []
+    last_session_summary: str = ""
+    last_updated: str = ""
 
 
 class JordanSession(BaseModel):

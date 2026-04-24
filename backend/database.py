@@ -7,7 +7,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Iterator
 
-from models import AnalysisResult, JobCreate, JobRecord, JobWithTrack, JordanSession, PositionTrack
+from models import AnalysisResult, CandidateProfile, JobCreate, JobRecord, JobWithTrack, JordanSession, PositionTrack
 
 MANUEL_RESUME = """
 Name: Manuel Messon-Roque
@@ -28,6 +28,11 @@ SEEDED_TRACKS = [
     {
         "name": "customer-success",
         "display_name": "Customer Success Specialist",
+        "base_resume": MANUEL_RESUME,
+    },
+    {
+        "name": "onboarding-implementation",
+        "display_name": "Onboarding & Implementation Specialist",
         "base_resume": MANUEL_RESUME,
     },
     {
@@ -106,6 +111,18 @@ def init_db() -> None:
               context_id INTEGER,
               transcript TEXT,
               created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS candidate_profiles (
+              id INTEGER PRIMARY KEY,
+              track_key TEXT UNIQUE,
+              readiness_score REAL DEFAULT 0,
+              session_count INTEGER DEFAULT 0,
+              known_strengths TEXT DEFAULT '[]',
+              known_weaknesses TEXT DEFAULT '[]',
+              patterns TEXT DEFAULT '[]',
+              last_session_summary TEXT DEFAULT '',
+              last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
             """
         )
@@ -285,3 +302,64 @@ def update_jordan_session(session_id: int, transcript: list[dict[str, Any]]) -> 
             (json.dumps(transcript), session_id),
         )
     return get_jordan_session(session_id)
+
+
+def get_candidate_profile(track_key: str) -> CandidateProfile | None:
+    """Return the candidate profile for a track key, or None if no sessions yet."""
+    with get_connection() as connection:
+        row = connection.execute(
+            "SELECT * FROM candidate_profiles WHERE track_key = ?",
+            (track_key,),
+        ).fetchone()
+    if row is None:
+        return None
+    payload = dict(row)
+    payload["known_strengths"] = json.loads(payload["known_strengths"])
+    payload["known_weaknesses"] = json.loads(payload["known_weaknesses"])
+    payload["patterns"] = json.loads(payload["patterns"])
+    return CandidateProfile(**payload)
+
+
+def upsert_candidate_profile(
+    track_key: str,
+    readiness_score: float,
+    known_strengths: list[str],
+    known_weaknesses: list[str],
+    patterns: list[str],
+    last_session_summary: str,
+) -> CandidateProfile:
+    """Create or update the candidate profile for a track."""
+    with get_connection() as connection:
+        existing = connection.execute(
+            "SELECT session_count FROM candidate_profiles WHERE track_key = ?",
+            (track_key,),
+        ).fetchone()
+        session_count = (existing["session_count"] + 1) if existing else 1
+        connection.execute(
+            """
+            INSERT INTO candidate_profiles
+              (track_key, readiness_score, session_count, known_strengths, known_weaknesses, patterns, last_session_summary, last_updated)
+            VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            ON CONFLICT(track_key) DO UPDATE SET
+              readiness_score = excluded.readiness_score,
+              session_count = excluded.session_count,
+              known_strengths = excluded.known_strengths,
+              known_weaknesses = excluded.known_weaknesses,
+              patterns = excluded.patterns,
+              last_session_summary = excluded.last_session_summary,
+              last_updated = CURRENT_TIMESTAMP
+            """,
+            (
+                track_key,
+                readiness_score,
+                session_count,
+                json.dumps(known_strengths),
+                json.dumps(known_weaknesses),
+                json.dumps(patterns),
+                last_session_summary,
+            ),
+        )
+    result = get_candidate_profile(track_key)
+    if result is None:
+        raise RuntimeError("Failed to load candidate profile")
+    return result
