@@ -93,13 +93,41 @@ async function loadSession() {
   const data = await response.json();
   sessionId = data.session_id;
 
-  // Show warmup + score history
-  const scoreHtml = data.session_count > 0
-    ? `<div class="score-history">Session ${data.session_count + 1} · Last readiness score: <strong>${data.readiness_score.toFixed(1)}/10</strong>${data.known_weaknesses.length ? ` · We're targeting: <em>${data.known_weaknesses[0]}</em>` : ""}</div>`
-    : `<div class="score-history first-session">First session — establishing your baseline.</div>`;
+  // Session type badge
+  const fitLabels = {
+    mismatch: { text: "Career navigation", cls: "session-type-navigate" },
+    pivot:    { text: "Career pivot",      cls: "session-type-pivot" },
+    good:     { text: "Interview prep",    cls: "session-type-prep" },
+  };
+  const fitInfo = fitLabels[data.fit_level] || fitLabels.good;
+  const sessionTypeBadge = `<span class="session-type-badge ${fitInfo.cls}">${fitInfo.text}</span>`;
+
+  // Tagline adapts to session type
+  const taglineEl = document.querySelector(".jordan-tagline");
+  if (taglineEl) {
+    if (data.fit_level === "mismatch") taglineEl.textContent = "Honest about fit. Focused on where you'll win.";
+    else if (data.fit_level === "pivot") taglineEl.textContent = "Own your story. Bridge the gap.";
+    else taglineEl.textContent = "Warm, direct, no weak answers allowed.";
+  }
+
+  // Score history — show coaching focus (not raw weakness label)
+  let scoreHtml;
+  if (data.session_count > 0) {
+    const focusText = data.known_weaknesses.length
+      ? `Focus this session: <em>${data.known_weaknesses[0]}</em>`
+      : "";
+    scoreHtml = `<div class="score-history">${sessionTypeBadge} Session ${data.session_count + 1} · Readiness: <strong>${data.readiness_score.toFixed(1)}/10</strong>${focusText ? ` · ${focusText}` : ""}</div>`;
+  } else {
+    scoreHtml = `<div class="score-history first-session">${sessionTypeBadge} First session — establishing your baseline.</div>`;
+  }
 
   warmupCard.innerHTML = `${scoreHtml}<p class="warmup-text">${data.warmup_text || data.context_summary}</p>`;
-  startButton.querySelector(".btn-label").textContent = data.session_count > 0 ? `Session ${data.session_count + 1}. Let's go.` : "I'm ready. Let's go.";
+
+  const btnLabels = { mismatch: "Let's talk.", pivot: "I'm ready. Let's go.", good: "I'm ready. Let's go." };
+  const btnLabel = data.session_count > 0
+    ? (data.fit_level === "mismatch" ? "Session 2. Let's talk." : `Session ${data.session_count + 1}. Let's go.`)
+    : (btnLabels[data.fit_level] || "I'm ready. Let's go.");
+  startButton.querySelector(".btn-label").textContent = btnLabel;
   startButton.disabled = false;
 
   // Pre-load first question audio

@@ -466,13 +466,12 @@ def _build_warmup(context_summary: str, resume: str, fit_level: str = "good") ->
 
         if fit_level == "mismatch":
             system = (
-                "You are Jordan, a career coach. The candidate is looking at a job that's a poor fit for their background. "
-                "Write 3 sentences that are honest and helpful — not harsh. "
-                "Sentence 1: Name the core reason this role isn't the right target right now (missing credential, wrong field, etc.). Be specific, not vague. "
-                "Sentence 2: Identify what they DO have going for them based on their actual resume — name real companies or projects. "
-                "Sentence 3: Point them toward a better first target or the step they'd need to take to eventually get there. "
-                "Sound like a coach who wants them to win, not one who's dismissing them. "
-                "End with: tell them the session can still help — not for this job, but to sharpen how they tell their story for the right target."
+                "You are Jordan, a career coach. The candidate is looking at a job that's a poor fit. "
+                "Write exactly 3 short sentences — direct, warm, honest. No fluff, no long paragraphs. "
+                "Sentence 1: Name the specific reason this role isn't the right target (missing credential, wrong field). One sentence. "
+                "Sentence 2: Name ONE real strength from their resume (specific company or project) and say why it matters for a better-fit role. "
+                "Sentence 3: Name the better target they should pursue instead — be specific (e.g. 'Customer Success at a SaaS company'). "
+                "Do NOT add extra sentences. 3 sentences total, nothing more."
             )
         elif fit_level == "pivot":
             system = (
@@ -621,6 +620,8 @@ async def start_session(mode: str, context_id: int) -> JordanStartResponse:
         readiness_score=prior_profile.readiness_score if prior_profile else 0,
         session_count=prior_profile.session_count if prior_profile else 0,
         known_weaknesses=prior_profile.known_weaknesses if prior_profile else [],
+        fit_level=fit_level,
+        company_type=company_type,
     )
 
 

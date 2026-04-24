@@ -94,6 +94,8 @@ class JordanStartResponse(BaseModel):
     readiness_score: float = 0
     session_count: int = 0
     known_weaknesses: list[str] = []
+    fit_level: str = "good"
+    company_type: str = "other"
 
 
 class JordanRespondRequest(BaseModel):

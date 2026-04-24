@@ -1070,6 +1070,21 @@ textarea { resize: vertical; }
   padding: 6px 14px;
 }
 
+/* Jordan session type badge */
+.session-type-badge {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 2px 10px;
+  border-radius: 999px;
+  margin-right: 6px;
+}
+.session-type-prep     { background: rgba(99,102,241,0.2); color: #a5b4fc; }
+.session-type-pivot    { background: rgba(234,179,8,0.15); color: #fde047; }
+.session-type-navigate { background: rgba(239,68,68,0.15); color: #fca5a5; }
+
 .status-Applied   { background: var(--blue); }
 .status-Screening { background: var(--yellow); color: #000; }
 .status-Interview { background: var(--green); }
