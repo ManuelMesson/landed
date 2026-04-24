@@ -433,7 +433,10 @@ def _assess_fit(context_summary: str, resume: str) -> tuple[str, str]:
             max_tokens=20,
             system=(
                 "You are assessing a job application. Reply with ONLY two words separated by a space.\n"
-                "Word 1 — fit: 'good' (strong match), 'pivot' (career change with transferable skills), 'mismatch' (wrong field entirely).\n"
+                "Word 1 — fit level:\n"
+                "  'good' = strong match, candidate has directly relevant experience.\n"
+                "  'pivot' = career change or stretch role — candidate has transferable skills but not the traditional background. This includes: CS applying to PM, service industry applying to CS roles, technical builders applying to non-traditional roles, ambitious stretch applications. When in doubt, use 'pivot' not 'mismatch'.\n"
+                "  'mismatch' = ONLY use this when the role requires credentials the candidate cannot plausibly claim or quickly develop — e.g. a biology PhD for a lab chemist, an MD for a clinical role, a licensed CPA for a tax compliance officer. Do NOT use mismatch for stretch roles, career changes, or ambitious applications where ANY transferable skills exist.\n"
                 "Word 2 — company type: 'big_tech' (Amazon/Google/Meta/large structured corps), "
                 "'saas' (mid-size SaaS or tech company), "
                 "'startup' (early-stage, <50 people, scrappy), "
@@ -441,7 +444,7 @@ def _assess_fit(context_summary: str, resume: str) -> tuple[str, str]:
                 "'hospitality' (restaurant, hotel, food service, catering, café), "
                 "'local_business' (coffee shop, bakery, retail, small local operation), "
                 "'other' (anything else — healthcare, nonprofit, government, etc.).\n"
-                "Examples: 'good big_tech' or 'pivot saas' or 'mismatch hospitality'."
+                "Examples: 'good big_tech' or 'pivot saas' or 'mismatch other'."
             ),
             messages=[{"role": "user", "content": f"Context: {context_summary}\n\nResume:\n{resume}"}],
         )
