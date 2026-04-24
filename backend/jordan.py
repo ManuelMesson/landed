@@ -13,9 +13,22 @@ LOGGER = logging.getLogger(__name__)
 GREETING = "Hey, I'm Jordan. Let's make sure you're ready for this one. Tell me — what draws you to this role?"
 MIN_EXCHANGES = 3
 
+SYSTEM_PROMPT = """You are Jordan, a direct and warm interview coach for job seekers.
+
+Your job is to prepare the candidate for real interviews through back-and-forth conversation.
+
+Rules:
+- Be concise. One coaching observation + one follow-up question per response. Never more.
+- Push back on vague answers. If the answer has no specific example, metric, or concrete outcome, challenge it: "That's a start — give me a specific example with a result."
+- Affirm progress when the answer improves — then push further.
+- Adapt to what the candidate actually said. Never repeat the same question or coaching.
+- Ask questions relevant to the specific role and their actual answer.
+- Sound like a real person, not a chatbot. Warm but not soft.
+- Never be sycophantic. "Great answer!" is not allowed.
+- Format: coaching observation first (1-2 sentences), then follow-up question (1 sentence ending in ?)."""
+
 
 def audio_dir() -> Path:
-    """Return the directory used for generated Jordan audio."""
     env_path = os.getenv("LANDED_AUDIO_DIR")
     path = Path(env_path) if env_path else database.repo_root() / "static" / "audio"
     path.mkdir(parents=True, exist_ok=True)
@@ -23,110 +36,175 @@ def audio_dir() -> Path:
 
 
 async def _write_edge_tts(text: str, output_path: Path) -> None:
-    """Write mp3 audio using edge_tts when available."""
     import edge_tts
-
     communicate = edge_tts.Communicate(text, "en-US-GuyNeural")
     await communicate.save(str(output_path))
 
 
 async def synthesize_audio(text: str) -> str:
-    """Create a stable audio file for text and return its public URL."""
     digest = hashlib.sha1(text.encode("utf-8")).hexdigest()[:16]
     output_path = audio_dir() / f"jordan-{digest}.mp3"
     if not output_path.exists():
         try:
             if os.getenv("LANDED_DISABLE_TTS") == "1":
-                raise RuntimeError("TTS disabled for this environment")
+                raise RuntimeError("TTS disabled")
             await _write_edge_tts(text=text, output_path=output_path)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             LOGGER.warning("Falling back to placeholder audio: %s", exc)
             output_path.write_bytes(b"ID3Landed placeholder audio")
     return f"/static/audio/{output_path.name}"
 
 
 def build_context(mode: str, context_id: int) -> str:
-    """Build a short summary for either track or job coaching."""
     if mode == "job":
         job = database.get_job(context_id)
         if job is None:
             raise ValueError("Job not found")
-        gap_text = ", ".join(job.analysis.gaps_to_address[:3])
-        return f"Job prep for {job.company} {job.role}. Focus gaps: {gap_text or 'specific examples and metrics'}."
+        gap_text = ", ".join(job.analysis.gaps_to_address[:3]) if job.analysis else ""
+        return f"Job prep for {job.company} — {job.role}. Key gaps to address: {gap_text or 'specific examples and metrics'}."
     track = database.get_track(context_id)
     if track is None:
         raise ValueError("Track not found")
-    return f"Track prep for {track.display_name}. Focus on customer empathy, clear communication, and measurable outcomes."
+    return f"Track prep for {track.display_name}. Focus on customer empathy, ownership, and measurable outcomes."
 
 
-def build_next_questions(mode: str, context_summary: str) -> list[str]:
-    """Return the first question plus a couple of follow-ups."""
-    return [
-        GREETING,
-        f"Give me one specific example from your background that proves you can handle this. Context: {context_summary}",
-        "What's the clearest metric, result, or customer outcome you can point to from that example?",
-        "Now tighten that into a concise interview answer: situation, action, result.",
-    ]
+def _call_claude_coaching(transcript: list[dict], context_summary: str, session_complete: bool) -> tuple[str, str]:
+    """Call Claude API to generate real coaching + next question from full conversation history."""
+    api_key = os.getenv("ANTHROPIC_API_KEY")
+    if not api_key:
+        raise RuntimeError("ANTHROPIC_API_KEY not set")
 
+    try:
+        from anthropic import Anthropic
+    except ImportError as exc:
+        raise RuntimeError("anthropic package not installed") from exc
 
-def answer_is_vague(answer: str) -> bool:
-    """Detect answers that lack specifics, metrics, or examples."""
-    lowered = answer.lower()
-    vague_terms = {"helped", "worked", "good", "great", "stuff", "things", "support", "customers"}
-    has_metric = any(char.isdigit() for char in lowered)
-    has_example_marker = any(term in lowered for term in {"for example", "for instance", "when", "because", "after"})
-    token_count = len(answer.split())
-    vague_hits = sum(1 for term in vague_terms if term in lowered)
-    return token_count < 18 or (not has_metric and not has_example_marker) or vague_hits >= 2
+    client = Anthropic(api_key=api_key)
 
+    # Build conversation for Claude
+    messages = []
 
-def _challenge(answer: str) -> str:
-    """Return push-back coaching for vague answers."""
-    return (
-        "That's a start, but it still sounds broad. Give me a concrete example with a specific result or number. "
-        "What changed because of your work?"
+    # Add context as first assistant message
+    messages.append({
+        "role": "user",
+        "content": f"Context: {context_summary}\n\nStart the coaching session."
+    })
+    messages.append({
+        "role": "assistant",
+        "content": GREETING
+    })
+
+    # Replay the conversation history (skip the greeting which is already in messages)
+    user_turns = [t for t in transcript if t["speaker"] == "user"]
+    jordan_turns = [t for t in transcript if t["speaker"] == "jordan" and t["text"] != GREETING]
+
+    for i, user_turn in enumerate(user_turns):
+        messages.append({"role": "user", "content": user_turn["text"]})
+        # Add Jordan's previous response if it exists (i.e. not the last user turn)
+        if i < len(jordan_turns):
+            messages.append({"role": "assistant", "content": jordan_turns[i]["text"]})
+
+    # If session is ending, add a closer instruction
+    if session_complete:
+        messages.append({
+            "role": "user",
+            "content": "[This is the final exchange. Give your last coaching note and ask them to close strong: why this company, why now.]"
+        })
+
+    response = client.messages.create(
+        model="claude-sonnet-4-20250514",
+        max_tokens=300,
+        system=SYSTEM_PROMPT,
+        messages=messages,
     )
 
+    full_response = response.content[0].text.strip()
 
-def _affirm(answer: str) -> str:
-    """Return concise coaching for stronger answers."""
-    return (
-        "Better. Keep the answer grounded in customer impact, your action, and the measurable result. "
-        "Trim extra setup and lead with the outcome."
-    )
+    # Split coaching observation from question
+    # Last sentence ending with ? is the question, everything before is coaching
+    sentences = [s.strip() for s in full_response.replace("\n", " ").split(". ") if s.strip()]
+    question_parts = []
+    coaching_parts = []
+
+    for sentence in sentences:
+        if sentence.endswith("?"):
+            question_parts.append(sentence)
+        else:
+            coaching_parts.append(sentence)
+
+    if question_parts:
+        coaching = ". ".join(coaching_parts).strip()
+        next_question = question_parts[-1]
+        if not coaching:
+            coaching = next_question
+            next_question = question_parts[-1]
+    else:
+        # Claude returned a single block — use it all as the question
+        coaching = full_response
+        next_question = full_response
+
+    return coaching, next_question
+
+
+def _fallback_coaching(answer: str, exchange_count: int) -> tuple[str, str]:
+    """Static fallback if Claude API fails."""
+    words = answer.lower().split()
+    has_metric = any(c.isdigit() for c in answer)
+    has_example = any(w in answer.lower() for w in ["when", "because", "after", "example", "result"])
+
+    if len(words) < 15 or (not has_metric and not has_example):
+        coaching = "That's a start — but it's still broad. Give me a specific situation with an actual result."
+        question = "Walk me through a concrete example: what was the situation, what did you do, and what changed?"
+    elif exchange_count >= MIN_EXCHANGES:
+        coaching = "Better. Tighten it: lead with the outcome, cut the setup."
+        question = "Tell me why this specific company and this specific role fit where you're headed right now."
+    else:
+        coaching = "Good. Keep the focus on your action and the measurable impact."
+        question = "Now apply that same thinking to a customer challenge you've handled. What happened?"
+
+    return coaching, question
 
 
 async def start_session(mode: str, context_id: int) -> JordanStartResponse:
-    """Create a Jordan session with prefetched audio for the first two questions."""
     context_summary = build_context(mode=mode, context_id=context_id)
-    questions = build_next_questions(mode=mode, context_summary=context_summary)
-    transcript = [{"speaker": "jordan", "text": question} for question in questions[:2]]
+    transcript = [{"speaker": "jordan", "text": GREETING}]
     session = database.create_jordan_session(mode=mode, context_id=context_id, transcript=transcript)
     return JordanStartResponse(
         session_id=session.id,
-        question_text=questions[0],
-        audio_url=await synthesize_audio(questions[0]),
-        prefetched_audio_urls=[await synthesize_audio(questions[1])],
+        question_text=GREETING,
+        audio_url=await synthesize_audio(GREETING),
+        prefetched_audio_urls=[],
     )
 
 
 async def respond(session_id: int, answer: str) -> JordanRespondResponse:
-    """Append a user answer, coach it, and deliver the next question."""
     session = database.get_jordan_session(session_id)
     if session is None:
         raise ValueError("Session not found")
+
     transcript = list(session.transcript)
     transcript.append({"speaker": "user", "text": answer})
-    coaching = _challenge(answer) if answer_is_vague(answer) else _affirm(answer)
-    exchange_count = sum(1 for item in transcript if item["speaker"] == "user")
+
+    exchange_count = sum(1 for t in transcript if t["speaker"] == "user")
     session_complete = exchange_count >= MIN_EXCHANGES
-    next_question = (
-        "Good. Close by telling me why this role and this company fit your trajectory right now."
-        if session_complete
-        else "Push this further. What did you do, how did you do it, and what was the result?"
-    )
+
+    # Get context from session
+    context_summary = build_context(mode=session.mode, context_id=session.context_id)
+
+    # Try Claude API first, fall back to static
+    try:
+        coaching, next_question = _call_claude_coaching(
+            transcript=transcript,
+            context_summary=context_summary,
+            session_complete=session_complete,
+        )
+    except Exception as exc:
+        LOGGER.warning("Jordan Claude call failed, using fallback: %s", exc)
+        coaching, next_question = _fallback_coaching(answer=answer, exchange_count=exchange_count)
+
     transcript.append({"speaker": "jordan", "text": next_question, "coaching": coaching})
     database.update_jordan_session(session_id=session_id, transcript=transcript)
+
     return JordanRespondResponse(
         coaching=coaching,
         next_question_text=next_question,

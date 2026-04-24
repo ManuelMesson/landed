@@ -5,6 +5,43 @@ const state = {
   debounceId: null,
 };
 
+// ── Toast system ──
+function showToast(message, type = "success") {
+  const container = document.querySelector("#toast-container");
+  const toast = document.createElement("div");
+  toast.className = `toast toast-${type}`;
+  toast.textContent = message;
+  container.appendChild(toast);
+  requestAnimationFrame(() => toast.classList.add("toast-visible"));
+  setTimeout(() => {
+    toast.classList.remove("toast-visible");
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
+}
+
+// ── Button loading state ──
+function setButtonLoading(button, loading) {
+  const label = button.querySelector(".btn-label");
+  const spinner = button.querySelector(".btn-spinner");
+  button.disabled = loading;
+  if (label) label.textContent = loading ? "Analyzing..." : "Analyze";
+  if (spinner) spinner.classList.toggle("hidden", !loading);
+}
+
+// ── Stage transitions ──
+function showStage(id) {
+  const el = document.querySelector(`#${id}`);
+  if (el) {
+    el.classList.remove("hidden");
+    requestAnimationFrame(() => el.classList.add("reveal"));
+  }
+}
+
+function hideStage(id) {
+  const el = document.querySelector(`#${id}`);
+  if (el) el.classList.add("hidden");
+}
+
 const trackSelect = document.querySelector("#track-select");
 const jobPost = document.querySelector("#job-post");
 const resumeEditor = document.querySelector("#resume-editor");
@@ -23,7 +60,7 @@ const atsMeter = document.querySelector("#ats-meter");
 const hmMeter = document.querySelector("#hm-meter");
 
 function setStatus(message) {
-  statusLine.textContent = message;
+  if (statusLine) statusLine.textContent = message;
 }
 
 function renderList(id, items) {
@@ -58,18 +95,26 @@ function animateNumber(node, endValue, suffix = "", decimals = 0) {
 
 function renderAnalysis(payload) {
   state.currentAnalysis = payload;
+
+  showStage("stage-score");
+  showStage("stage-analysis");
+
   animateNumber(atsScoreEl, payload.ats_score, "%", 0);
   animateNumber(hmScoreEl, payload.hm_score, "", 1);
   atsMeter.style.width = `${payload.ats_score}%`;
   hmMeter.style.width = `${Math.min(100, payload.hm_score * 10)}%`;
-  atsMeter.style.background = meterColor(payload.ats_score);
-  hmMeter.style.background = meterColor(payload.ats_score);
-  document.querySelector("#role-summary").textContent = payload.role_summary;
+
+  const roleSummary = document.querySelector("#role-summary");
+  if (roleSummary) roleSummary.textContent = payload.role_summary || "";
+
   renderList("key-requirements", payload.key_requirements);
   renderList("your-strengths", payload.your_strengths);
   renderList("gaps-to-address", payload.gaps_to_address);
   renderList("talking-points", payload.talking_points);
   renderList("red-flags", payload.red_flags);
+
+  // Scroll score into view
+  document.querySelector("#stage-score")?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function createField(labelText, name, placeholder = "", value = "", options = {}) {
@@ -387,36 +432,40 @@ async function loadTracks() {
 
 async function runAnalysis() {
   if (!jobPost.value.trim()) {
-    setStatus("Paste a job post to analyze.");
+    showToast("Paste a job post first.", "error");
     return;
   }
-  setStatus("Analyzing with Landed...");
-  const response = await fetch("/analyze", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      job_post: jobPost.value,
-      resume: serializeResume(),
-      track_id: Number(trackSelect.value),
-    }),
-  });
-  const payload = await response.json();
-  renderAnalysis(payload);
-  setStatus("Analysis updated.");
+  setButtonLoading(analyzeButton, true);
+  document.querySelector("#analysis-loading")?.classList.remove("hidden");
+  try {
+    const response = await fetch("/analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        job_post: jobPost.value,
+        resume: serializeResume(),
+        track_id: Number(trackSelect.value),
+      }),
+    });
+    const payload = await response.json();
+    renderAnalysis(payload);
+  } catch (err) {
+    showToast("Analysis failed. Try again.", "error");
+  } finally {
+    setButtonLoading(analyzeButton, false);
+    document.querySelector("#analysis-loading")?.classList.add("hidden");
+  }
 }
 
 async function saveBaseResume() {
-  setStatus("Saving base resume...");
   await fetch(`/tracks/${trackSelect.value}/resume`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ resume: serializeResume() }),
   });
   const track = state.tracks.find((item) => item.id === Number(trackSelect.value));
-  if (track) {
-    track.base_resume = serializeResume();
-  }
-  setStatus("Base resume saved for this track.");
+  if (track) track.base_resume = serializeResume();
+  showToast("Resume saved ✓");
 }
 
 async function logJob() {
@@ -442,8 +491,8 @@ async function logJob() {
     body: JSON.stringify(payload),
   });
   const job = await response.json();
-  setStatus(`Logged ${job.company} - ${job.role}.`);
-  window.location.href = `/tracker?track_id=${job.track_id}`;
+  showToast(`${job.company} logged ✓ — opening pipeline`);
+  setTimeout(() => { window.location.href = `/tracker?track_id=${job.track_id}`; }, 1200);
 }
 
 function scheduleAnalysis() {
@@ -491,6 +540,24 @@ analyzeButton.addEventListener("click", runAnalysis);
 saveResumeButton.addEventListener("click", saveBaseResume);
 logJobButton.addEventListener("click", logJob);
 
-document.querySelector("#date-applied").value = new Date().toISOString().slice(0, 10);
+// Tune panel
+document.querySelector("#tune-button")?.addEventListener("click", () => {
+  showStage("stage-tune");
+  document.querySelector("#stage-tune")?.scrollIntoView({ behavior: "smooth", block: "start" });
+});
+document.querySelector("#close-tune")?.addEventListener("click", () => hideStage("stage-tune"));
+
+// Log panel
+document.querySelector("#log-job")?.addEventListener("click", () => {
+  if (!state.currentAnalysis) { showToast("Run Analyze first.", "error"); return; }
+  showStage("stage-log");
+  document.querySelector("#stage-log")?.scrollIntoView({ behavior: "smooth", block: "start" });
+});
+document.querySelector("#close-log")?.addEventListener("click", () => hideStage("stage-log"));
+document.querySelector("#confirm-log")?.addEventListener("click", logJob);
+
+const dateApplied = document.querySelector("#date-applied");
+if (dateApplied) dateApplied.value = new Date().toISOString().slice(0, 10);
+
 window.LandedResumeEditor = { parseResume, serializeResume };
 loadTracks().catch((error) => setStatus(`Failed to load tracks: ${error.message}`));

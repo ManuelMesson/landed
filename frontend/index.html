@@ -4,182 +4,158 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Landed</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css" />
     <script defer src="/static/index.js"></script>
   </head>
   <body data-page="analyzer">
-    <div class="page-shell">
-      <header class="hero">
-        <div>
-          <p class="eyebrow">Landed</p>
-          <h1>Landed</h1>
-          <p class="tagline">Paste a job. Improve your resume. Land the interview.</p>
+
+    <div id="toast-container"></div>
+
+    <!-- ── Minimal header ── -->
+    <header class="top-bar">
+      <span class="wordmark">Landed</span>
+      <div class="top-bar-right">
+        <select id="track-select" class="track-pill"></select>
+        <a href="/tracker" class="nav-pill">Pipeline →</a>
+      </div>
+    </header>
+
+    <main class="flow-main">
+
+      <!-- ── STAGE 1: Input ── -->
+      <section id="stage-input" class="stage stage-active">
+        <h2 class="stage-label">Paste a job post</h2>
+        <textarea id="job-post" class="job-textarea" placeholder="Paste the full job description here…"></textarea>
+        <div class="stage-actions">
+          <button id="analyze-button" class="cta-button" type="button">
+            <span class="btn-label">Analyze</span>
+            <span class="btn-spinner hidden"></span>
+          </button>
         </div>
-        <nav class="top-nav">
-          <a href="/" class="nav-link current">Analyzer</a>
-          <a href="/tracker" class="nav-link">Your Pipeline</a>
-        </nav>
-      </header>
+        <div id="analysis-loading" class="skeleton-row hidden">
+          <div class="skeleton-card"></div>
+          <div class="skeleton-card"></div>
+        </div>
+      </section>
 
-      <main>
-        <section class="toolbar card">
-          <label for="track-select">Position track</label>
-          <select id="track-select"></select>
-          <button id="save-resume" class="secondary-button" type="button">Save Base Resume</button>
-          <a class="ghost-link" href="/tracker">Open tracker</a>
-        </section>
-
-        <section class="split-layout">
-          <article class="editor card">
-            <div class="card-header">
-              <h2>Job post</h2>
-              <button id="analyze-button" class="primary-button" type="button">Analyze</button>
-            </div>
-            <label class="sr-only" for="job-post">Paste job post</label>
-            <textarea id="job-post" rows="18" placeholder="Paste the job post here."></textarea>
-          </article>
-
-          <article class="editor card">
-            <div class="card-header">
-              <h2>Resume editor</h2>
-              <span class="mini-label">Base resume for this track</span>
-            </div>
-            <div id="resume-editor" class="resume-editor" aria-label="Edit resume">
-              <section class="resume-section">
-                <div class="resume-section-header">
-                  <h3>Name + Title</h3>
-                </div>
-                <label for="resume-name-title">Name + Title</label>
-                <input id="resume-name-title" name="nameTitle" type="text" placeholder="Manuel Messon-Roque" />
-              </section>
-
-              <section class="resume-section">
-                <div class="resume-section-header">
-                  <h3>Contact</h3>
-                </div>
-                <label for="resume-contact">Contact</label>
-                <input
-                  id="resume-contact"
-                  name="contact"
-                  type="text"
-                  placeholder="Seattle, WA · manuelmesson@gmail.com"
-                />
-              </section>
-
-              <section class="resume-section">
-                <div class="resume-section-header">
-                  <h3>Experience</h3>
-                </div>
-                <div id="experience-list" class="entry-list"></div>
-                <button id="add-experience" class="add-entry-button" type="button">+ Add experience</button>
-              </section>
-
-              <section class="resume-section">
-                <div class="resume-section-header">
-                  <h3>Projects</h3>
-                </div>
-                <div id="project-list" class="entry-list"></div>
-                <button id="add-project" class="add-entry-button" type="button">+ Add project</button>
-              </section>
-
-              <section class="resume-section">
-                <div class="resume-section-header">
-                  <h3>Skills</h3>
-                </div>
-                <label for="resume-skills">Skills</label>
-                <textarea
-                  id="resume-skills"
-                  name="skills"
-                  rows="2"
-                  placeholder="Customer Success, Process Improvement, HubSpot"
-                ></textarea>
-              </section>
-
-              <section class="resume-section">
-                <div class="resume-section-header">
-                  <h3>Education</h3>
-                </div>
-                <label for="resume-education">Education</label>
-                <textarea
-                  id="resume-education"
-                  name="education"
-                  rows="3"
-                  placeholder="Seattle Central College, Associate of Business, Dec 2025"
-                ></textarea>
-              </section>
-            </div>
-          </article>
-        </section>
-
-        <section class="scores-grid">
-          <article class="score-card card">
-            <div class="score-meta">
-              <span>ATS match</span>
-              <strong id="ats-score">0%</strong>
-            </div>
-            <div class="meter">
-              <div id="ats-meter" class="meter-fill"></div>
-            </div>
-          </article>
-
-          <article class="score-card card">
-            <div class="score-meta">
-              <span>HM confidence</span>
-              <strong id="hm-score">0.0</strong>
-            </div>
-            <div class="meter">
-              <div id="hm-meter" class="meter-fill"></div>
-            </div>
-          </article>
-        </section>
-
-        <section class="card form-row">
-          <div>
-            <label for="company">Company</label>
-            <input id="company" type="text" placeholder="Amazon" />
+      <!-- ── STAGE 2: Score hero (hidden until analysis) ── -->
+      <section id="stage-score" class="stage hidden">
+        <div class="score-hero">
+          <div class="score-block">
+            <span class="score-label">ATS match</span>
+            <strong id="ats-score" class="score-number">—</strong>
+            <div class="meter"><div id="ats-meter" class="meter-fill"></div></div>
           </div>
-          <div>
-            <label for="role">Role</label>
-            <input id="role" type="text" placeholder="Customer Success Specialist" />
+          <div class="score-divider"></div>
+          <div class="score-block">
+            <span class="score-label">HM confidence</span>
+            <strong id="hm-score" class="score-number">—</strong>
+            <div class="meter"><div id="hm-meter" class="meter-fill"></div></div>
           </div>
-          <div>
-            <label for="date-applied">Date</label>
-            <input id="date-applied" type="date" />
-          </div>
-          <div class="button-wrap">
-            <button id="log-job" class="primary-button" type="button">Log This Job</button>
-          </div>
-        </section>
+        </div>
 
-        <section class="analysis-grid">
-          <article class="card analysis-summary">
-            <h2>Role summary</h2>
-            <p id="role-summary">Paste a job post to start.</p>
-          </article>
-          <article class="card">
-            <h2>Key requirements</h2>
-            <ul id="key-requirements" class="analysis-list"></ul>
-          </article>
-          <article class="card">
-            <h2>Your strengths</h2>
-            <ul id="your-strengths" class="analysis-list"></ul>
-          </article>
-          <article class="card">
-            <h2>Gaps to address</h2>
-            <ul id="gaps-to-address" class="analysis-list"></ul>
-          </article>
-          <article class="card">
-            <h2>Talking points</h2>
-            <ul id="talking-points" class="analysis-list"></ul>
-          </article>
-          <article class="card">
-            <h2>Red flags</h2>
-            <ul id="red-flags" class="analysis-list"></ul>
-          </article>
-        </section>
+        <p id="role-summary" class="role-summary-text"></p>
 
-        <p id="status-line" class="status-line">Waiting for input.</p>
-      </main>
-    </div>
+        <!-- One primary action at a time -->
+        <div class="action-strip">
+          <button id="tune-button" class="action-pill action-secondary" type="button">✏️ Tune resume</button>
+          <button id="log-job" class="action-pill action-secondary" type="button">📋 Log this job</button>
+          <a href="/jordan" class="action-pill action-primary">🎙 Prep with Jordan →</a>
+        </div>
+      </section>
+
+      <!-- ── STAGE 3: Resume tuner (slides in) ── -->
+      <section id="stage-tune" class="stage hidden">
+        <div class="tune-header">
+          <h2 class="stage-label">Tune your resume</h2>
+          <button id="close-tune" class="ghost-pill" type="button">Done ✓</button>
+        </div>
+        <button id="save-resume" class="ghost-pill save-pill" type="button">Save as base</button>
+
+        <div id="resume-editor" class="resume-editor" aria-label="Edit resume">
+          <div class="resume-row">
+            <label class="resume-label" for="resume-name-title">Name</label>
+            <input id="resume-name-title" name="nameTitle" type="text" class="resume-input" placeholder="Manuel Messon-Roque" />
+          </div>
+          <div class="resume-row">
+            <label class="resume-label" for="resume-contact">Contact</label>
+            <input id="resume-contact" name="contact" type="text" class="resume-input" placeholder="Seattle, WA · manuelmesson@gmail.com" />
+          </div>
+
+          <div class="resume-section-wrap">
+            <div class="resume-section-title">Experience</div>
+            <div id="experience-list" class="entry-list"></div>
+            <button id="add-experience" class="add-entry-button" type="button">+ Add</button>
+          </div>
+
+          <div class="resume-section-wrap">
+            <div class="resume-section-title">Projects</div>
+            <div id="project-list" class="entry-list"></div>
+            <button id="add-project" class="add-entry-button" type="button">+ Add</button>
+          </div>
+
+          <div class="resume-row">
+            <label class="resume-label" for="resume-skills">Skills</label>
+            <textarea id="resume-skills" name="skills" rows="2" class="resume-input" placeholder="Customer Success, HubSpot, Process Improvement"></textarea>
+          </div>
+          <div class="resume-row">
+            <label class="resume-label" for="resume-education">Education</label>
+            <textarea id="resume-education" name="education" rows="2" class="resume-input" placeholder="Seattle Central College, Associate of Business, Dec 2025"></textarea>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── STAGE 4: Log job (slides in) ── -->
+      <section id="stage-log" class="stage hidden">
+        <div class="tune-header">
+          <h2 class="stage-label">Log this application</h2>
+          <button id="close-log" class="ghost-pill" type="button">Cancel</button>
+        </div>
+        <div class="log-form">
+          <div class="log-row">
+            <label class="resume-label" for="company">Company</label>
+            <input id="company" type="text" class="resume-input" placeholder="Amazon" />
+          </div>
+          <div class="log-row">
+            <label class="resume-label" for="role">Role</label>
+            <input id="role" type="text" class="resume-input" placeholder="Customer Success Specialist" />
+          </div>
+          <div class="log-row">
+            <label class="resume-label" for="date-applied">Date</label>
+            <input id="date-applied" type="date" class="resume-input" />
+          </div>
+          <button id="confirm-log" class="cta-button" type="button">Confirm &amp; log →</button>
+        </div>
+      </section>
+
+      <!-- ── Analysis details accordion (hidden until score) ── -->
+      <section id="stage-analysis" class="stage hidden">
+        <div class="accordion-grid">
+          <details class="accordion-card" open>
+            <summary>Key requirements</summary>
+            <ul id="key-requirements" class="pill-list"></ul>
+          </details>
+          <details class="accordion-card">
+            <summary>Your strengths</summary>
+            <ul id="your-strengths" class="pill-list"></ul>
+          </details>
+          <details class="accordion-card">
+            <summary>Gaps to address</summary>
+            <ul id="gaps-to-address" class="pill-list"></ul>
+          </details>
+          <details class="accordion-card">
+            <summary>Talking points</summary>
+            <ul id="talking-points" class="pill-list"></ul>
+          </details>
+          <details class="accordion-card">
+            <summary>Red flags</summary>
+            <ul id="red-flags" class="pill-list"></ul>
+          </details>
+        </div>
+      </section>
+
+    </main>
   </body>
 </html>
