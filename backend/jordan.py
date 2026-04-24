@@ -285,12 +285,14 @@ def _call_claude_coaching(transcript: list[dict], context_summary: str, resume: 
 
     full_response = response.content[0].text.strip()
 
-    # Split coaching observation from question
-    # Last sentence ending with ? is the question, everything before is coaching
-    sentences = [s.strip() for s in full_response.replace("\n", " ").split(". ") if s.strip()]
+    # Split on any sentence-ending punctuation followed by whitespace
+    # This handles "." "?" "!" as sentence boundaries
+    import re as _re
+    raw_sentences = _re.split(r'(?<=[.?!])\s+', full_response)
+    sentences = [s.strip() for s in raw_sentences if s.strip()]
+
     question_parts = []
     coaching_parts = []
-
     for sentence in sentences:
         if sentence.endswith("?"):
             question_parts.append(sentence)
@@ -298,16 +300,18 @@ def _call_claude_coaching(transcript: list[dict], context_summary: str, resume: 
             coaching_parts.append(sentence)
 
     if question_parts:
-        # coaching = everything that isn't a question; question = last sentence with ?
-        # Earlier question sentences (if any) get folded into coaching so they're not lost
-        extra_questions = question_parts[:-1]
-        coaching_sentences = coaching_parts + extra_questions
-        coaching = ". ".join(coaching_sentences).strip()
+        # Last ? sentence = the question. Everything else = coaching.
         next_question = question_parts[-1]
+        other_parts = coaching_parts + question_parts[:-1]
+        coaching = " ".join(other_parts).strip()
     else:
-        # Claude returned a statement block — treat last sentence as question, rest as coaching
-        coaching = ". ".join(sentences[:-1]).strip() if len(sentences) > 1 else ""
+        # No question mark — treat last sentence as the question, rest as coaching
         next_question = sentences[-1] if sentences else full_response
+        coaching = " ".join(sentences[:-1]).strip() if len(sentences) > 1 else ""
+
+    # Safety: never show the same text in both bubbles
+    if coaching == next_question:
+        coaching = ""
 
     return coaching, next_question
 
