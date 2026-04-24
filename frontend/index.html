@@ -28,35 +28,33 @@
       </div>
     </div>
 
-    <!-- ── Minimal header ── -->
+    <!-- ── Clean header ── -->
     <header class="top-bar">
       <span class="wordmark">Landed</span>
       <div class="top-bar-right">
-        <select id="track-select" class="track-pill"></select>
-        <button id="edit-resume-btn" class="nav-pill" type="button" style="cursor:pointer;border:none">Edit resume</button>
         <a href="/tracker" class="nav-pill">Pipeline →</a>
       </div>
     </header>
 
     <main class="flow-main">
 
-      <!-- ── STAGE 1: Input ── -->
+      <!-- ── STEP 1: Paste a job post ── -->
       <section id="stage-input" class="stage stage-active">
         <h2 class="stage-label">Paste a job post</h2>
         <textarea id="job-post" class="job-textarea" placeholder="Paste the full job description here…"></textarea>
-        <div class="stage-actions">
-          <button id="analyze-button" class="cta-button" type="button">
-            <span class="btn-label">Analyze</span>
-            <span class="btn-spinner hidden"></span>
-          </button>
-        </div>
         <div id="analysis-loading" class="skeleton-row hidden">
           <div class="skeleton-card"></div>
           <div class="skeleton-card"></div>
         </div>
+        <!-- Fallback for slow connections -->
+        <div class="stage-actions">
+          <button id="analyze-button" class="ghost-pill analyze-fallback hidden" type="button">
+            Analyze now
+          </button>
+        </div>
       </section>
 
-      <!-- ── STAGE 2: Score hero (hidden until analysis) ── -->
+      <!-- ── STEP 2: Score (hidden until analysis) ── -->
       <section id="stage-score" class="stage hidden">
         <div class="score-hero">
           <div class="score-block">
@@ -90,86 +88,16 @@
           </div>
         </div>
 
-        <!-- One primary action at a time -->
+        <!-- STEP 3 actions -->
         <div class="action-strip">
-          <button id="fix-resume-btn" class="action-pill action-secondary" type="button">
-            <span class="btn-label-fix">✍️ Fix my resume</span>
-            <span class="btn-spinner hidden"></span>
+          <button id="save-pipeline-btn" class="action-pill action-secondary" type="button">
+            Save to Pipeline
           </button>
-          <button id="tune-button" class="action-pill action-secondary" type="button">✏️ Edit resume</button>
-          <button id="log-job" class="action-pill action-secondary" type="button">📋 Log this job</button>
-          <a href="/jordan" class="action-pill action-primary">🎙 Prep with Jordan →</a>
-        </div>
-
-        <!-- Resume fix panel -->
-        <div id="resume-fix-panel" class="hidden"></div>
-      </section>
-
-      <!-- ── STAGE 3: Resume tuner (slides in) ── -->
-      <section id="stage-tune" class="stage hidden">
-        <div class="tune-header">
-          <h2 class="stage-label">Tune your resume</h2>
-          <button id="close-tune" class="ghost-pill" type="button">Done ✓</button>
-        </div>
-        <button id="save-resume" class="ghost-pill save-pill" type="button">Save as base</button>
-
-        <div id="resume-editor" class="resume-editor" aria-label="Edit resume">
-          <div class="resume-row">
-            <label class="resume-label" for="resume-name-title">Name</label>
-            <input id="resume-name-title" name="nameTitle" type="text" class="resume-input" placeholder="Manuel Messon-Roque" />
-          </div>
-          <div class="resume-row">
-            <label class="resume-label" for="resume-contact">Contact</label>
-            <input id="resume-contact" name="contact" type="text" class="resume-input" placeholder="Seattle, WA · manuelmesson@gmail.com" />
-          </div>
-
-          <div class="resume-section-wrap">
-            <div class="resume-section-title">Experience</div>
-            <div id="experience-list" class="entry-list"></div>
-            <button id="add-experience" class="add-entry-button" type="button">+ Add</button>
-          </div>
-
-          <div class="resume-section-wrap">
-            <div class="resume-section-title">Projects</div>
-            <div id="project-list" class="entry-list"></div>
-            <button id="add-project" class="add-entry-button" type="button">+ Add</button>
-          </div>
-
-          <div class="resume-row">
-            <label class="resume-label" for="resume-skills">Skills</label>
-            <textarea id="resume-skills" name="skills" rows="2" class="resume-input" placeholder="Customer Success, HubSpot, Process Improvement"></textarea>
-          </div>
-          <div class="resume-row">
-            <label class="resume-label" for="resume-education">Education</label>
-            <textarea id="resume-education" name="education" rows="2" class="resume-input" placeholder="Seattle Central College, Associate of Business, Dec 2025"></textarea>
-          </div>
+          <a id="jordan-link" href="/jordan" class="action-pill action-primary">Prep with Jordan →</a>
         </div>
       </section>
 
-      <!-- ── STAGE 4: Log job (slides in) ── -->
-      <section id="stage-log" class="stage hidden">
-        <div class="tune-header">
-          <h2 class="stage-label">Log this application</h2>
-          <button id="close-log" class="ghost-pill" type="button">Cancel</button>
-        </div>
-        <div class="log-form">
-          <div class="log-row">
-            <label class="resume-label" for="company">Company</label>
-            <input id="company" type="text" class="resume-input" placeholder="Amazon" />
-          </div>
-          <div class="log-row">
-            <label class="resume-label" for="role">Role</label>
-            <input id="role" type="text" class="resume-input" placeholder="Customer Success Specialist" />
-          </div>
-          <div class="log-row">
-            <label class="resume-label" for="date-applied">Date</label>
-            <input id="date-applied" type="date" class="resume-input" />
-          </div>
-          <button id="confirm-log" class="cta-button" type="button">Confirm &amp; log →</button>
-        </div>
-      </section>
-
-      <!-- ── Analysis details accordion (hidden until score) ── -->
+      <!-- ── Analysis details ── -->
       <section id="stage-analysis" class="stage hidden">
         <div class="accordion-grid">
           <details class="accordion-card" open>
