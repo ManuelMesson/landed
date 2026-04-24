@@ -13,35 +13,41 @@ function jordanBadge(sessionCount, readinessScore) {
   return `<span class="jordan-badge ${color}">${sessionCount} session${sessionCount > 1 ? "s" : ""} · ${readinessScore.toFixed(1)}/10</span>`;
 }
 
-function analysisBlock(title, items) {
-  const content = (items || []).map(item => `<li>${item}</li>`).join("");
-  return `<div class="detail-section"><strong>${title}</strong><ul>${content}</ul></div>`;
+function detailCard(label, items, modifier = "") {
+  if (!items || !items.length) return "";
+  const bullets = items.map(i => `<li>${i}</li>`).join("");
+  return `<div class="detail-card ${modifier}">
+    <p class="detail-card-label">${label}</p>
+    <ul class="detail-card-list">${bullets}</ul>
+  </div>`;
 }
 
 function detailMarkup(job, profile) {
+  const a = job.analysis || {};
+
   const jordanSection = profile && profile.session_count > 0
     ? `<div class="detail-jordan-history">
-        <strong>Jordan prep history</strong>
-        <div class="jordan-progress-row">
-          <span>${profile.session_count} session${profile.session_count > 1 ? "s" : ""} completed</span>
+        <div class="detail-jordan-header">
+          <span class="detail-jordan-title">Jordan · ${profile.session_count} session${profile.session_count > 1 ? "s" : ""}</span>
           <span class="readiness-pill">${profile.readiness_score.toFixed(1)}/10 readiness</span>
         </div>
-        ${profile.known_weaknesses.length ? `<p class="detail-muted">Still working on: ${profile.known_weaknesses.join(", ")}</p>` : ""}
-        ${profile.known_strengths.length ? `<p class="detail-muted">✅ Strong on: ${profile.known_strengths.join(", ")}</p>` : ""}
-       </div>`
-    : "";
+        ${profile.known_strengths.length ? `<p class="detail-strength">✅ ${profile.known_strengths.slice(0, 2).join(" · ")}</p>` : ""}
+        ${profile.known_weaknesses.length ? `<p class="detail-focus">Focus next: ${profile.known_weaknesses.slice(0, 2).join(" · ")}</p>` : ""}
+        <a class="action-pill action-primary detail-jordan-cta" href="/jordan?mode=job&job_id=${job.id}">
+          Session ${profile.session_count + 1} →
+        </a>
+      </div>`
+    : `<a class="action-pill action-primary" href="/jordan?mode=job&job_id=${job.id}">Prep with Jordan →</a>`;
+
   return `
     <div class="detail-panel">
-      <p><strong>Summary:</strong> ${job.analysis.role_summary}</p>
-      ${analysisBlock("Key requirements", job.analysis.key_requirements)}
-      ${analysisBlock("Gaps", job.analysis.gaps_to_address)}
-      ${analysisBlock("Talking points", job.analysis.talking_points)}
-      ${jordanSection}
-      <div class="row-actions" style="margin-top:12px">
-        <a class="ghost-link" href="/jordan?mode=job&job_id=${job.id}">
-          ${profile && profile.session_count > 0 ? `Session ${profile.session_count + 1} with Jordan →` : "Prep with Jordan →"}
-        </a>
+      ${a.role_summary ? `<p class="detail-summary">${a.role_summary}</p>` : ""}
+      <div class="detail-grid">
+        ${detailCard("Key requirements", a.key_requirements)}
+        ${detailCard("Your gaps", a.gaps_to_address, "detail-card-gaps")}
+        ${detailCard("Talking points", a.talking_points)}
       </div>
+      ${jordanSection}
     </div>
   `;
 }

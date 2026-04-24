@@ -997,6 +997,79 @@ textarea { resize: vertical; }
 .detail-muted { font-size: 0.85rem; color: var(--muted); margin: 4px 0 0; }
 .detail-section { margin-bottom: 10px; }
 
+/* Detail panel redesign */
+.detail-summary {
+  font-size: 0.9rem;
+  color: var(--muted);
+  margin: 0 0 14px;
+  line-height: 1.5;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 14px;
+}
+@media (max-width: 700px) {
+  .detail-grid { grid-template-columns: 1fr; }
+}
+
+.detail-card {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px;
+  padding: 12px;
+}
+.detail-card-gaps {
+  border-color: rgba(239,68,68,0.25);
+  background: rgba(239,68,68,0.04);
+}
+.detail-card-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 8px;
+}
+.detail-card-list {
+  margin: 0;
+  padding-left: 16px;
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: var(--text);
+}
+.detail-card-list li { margin-bottom: 3px; }
+
+/* Jordan section in detail */
+.detail-jordan-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.detail-jordan-title {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+.detail-strength {
+  font-size: 0.83rem;
+  color: var(--green);
+  margin: 4px 0;
+}
+.detail-focus {
+  font-size: 0.83rem;
+  color: var(--muted);
+  margin: 4px 0 10px;
+}
+.detail-jordan-cta {
+  display: inline-block;
+  margin-top: 4px;
+  font-size: 0.85rem;
+  padding: 6px 14px;
+}
+
 .status-Applied   { background: var(--blue); }
 .status-Screening { background: var(--yellow); color: #000; }
 .status-Interview { background: var(--green); }

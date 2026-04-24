@@ -484,12 +484,19 @@ def _build_profile_update(
         response = client.messages.create(
             model="claude-sonnet-4-20250514",
             max_tokens=400,
-            system='You are Jordan analyzing a coaching session. Return ONLY valid JSON with these keys: readiness_score (float 1-10), known_strengths (list of short strings), known_weaknesses (list of short strings), patterns (list of behavioral observations like "deflects on metrics"). Be specific and based only on what happened in this session. If prior profile exists, adjust scores gradually.',
+            system=(
+                'You are Jordan analyzing a coaching session. Return ONLY valid JSON with these keys: '
+                'readiness_score (float 1-10), '
+                'known_strengths (list of short coaching observations about what they do well — e.g. "gives specific examples", "strong on metrics"), '
+                'known_weaknesses (list of SHORT actionable coaching focus areas — e.g. "needs stronger results in STAR", "skips the metric every time", "answers too long" — never character judgments, only observable answer patterns), '
+                'patterns (list of behavioral observations like "deflects on metrics", "uses we instead of I"). '
+                'Base everything ONLY on what happened in the session. Never infer character traits. '
+                'If prior profile exists, adjust scores gradually. Return raw JSON only, no code fences.'
+            ),
             messages=[{"role": "user", "content": f"Context: {context_summary}{prior_context}\n\nResume:\n{resume}\n\nSession:\n{conversation}"}],
         )
         import json as _json
         text = response.content[0].text.strip()
-        # Strip markdown code blocks if present
         if text.startswith("```"):
             text = text.split("```")[1]
             if text.startswith("json"):
