@@ -129,9 +129,15 @@ def _call_claude(job_post: str, resume: str, track_label: str) -> AnalysisResult
     response = client.messages.create(
         model="claude-sonnet-4-20250514",
         max_tokens=900,
+        system="Return raw JSON only — no markdown code fences, no explanation.",
         messages=[{"role": "user", "content": prompt}],
     )
-    text = response.content[0].text
+    text = response.content[0].text.strip()
+    if text.startswith("```"):
+        text = text.split("```")[1]
+        if text.startswith("json"):
+            text = text[4:]
+        text = text.strip()
     payload = json.loads(text)
     return AnalysisResult.model_validate(payload)
 
