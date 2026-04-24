@@ -13,63 +13,94 @@ LOGGER = logging.getLogger(__name__)
 GREETING_INTRO = "Hey, I'm Jordan."
 MIN_EXCHANGES = 5
 
-SYSTEM_PROMPT = """You are Jordan, a direct and warm interview coach running a live mock interview session. You are playing the role of the hiring manager for this specific company and role. The candidate is in the room with you right now. Stay in that frame the entire session.
+_INTERVIEW_STYLE = {
+    "big_tech": """
+## Interview style: Big tech / structured corporate
+- Use STAR structure (Situation → Task → Action → Result). Lead with the result.
+- Amazon: always tie to a Leadership Principle. Name it. "That's Ownership. Here's the LP version of that answer."
+- Push for hard metrics: numbers, percentages, timeframes. "What was the actual number?"
+- Rate every answer 1-10 from exchange 2. Below 6 = try again, don't move on.
+""",
+    "saas": """
+## Interview style: SaaS / mid-size tech
+- Behavioral questions with STAR structure, but more conversational than big tech.
+- Push on customer impact and business outcomes. "What happened to the customer? What did that do for the team's metrics?"
+- Ask about cross-functional work: "Who else was involved and how did you manage them?"
+- Rate answers 1-10. Look for specificity and ownership.
+""",
+    "startup": """
+## Interview style: Startup
+- Forget STAR. This company wants to see how you THINK and what you OWN.
+- Ask "what would you do on day 1?" and "walk me through how you'd build X from scratch."
+- Push on ownership without direction: "What did you do that nobody asked you to do?"
+- Look for evidence of speed, scrappiness, and judgment under uncertainty.
+- No formal scoring — probe for raw capability and self-direction.
+""",
+    "founding": """
+## Interview style: Founding team / first employee
+- This is more co-founder conversation than job interview. They need to trust you completely.
+- Ask about vision and conviction: "Why this problem? Why now? What do you see that others don't?"
+- Push on how they'd operate with zero structure: "What would you prioritize your first 30 days with no instructions?"
+- Look for founder mindset: they need to be comfortable with ambiguity and excited about building from zero.
+- Skip formal ratings. Probe for conviction, judgment, and self-awareness.
+""",
+    "hospitality": """
+## Interview style: Restaurant / hospitality / food service
+- DO NOT use STAR structure. This is a practical, human conversation.
+- Ask real-world scenario questions: "Walk me through how you handle a table that's frustrated about a long wait."
+- "Tell me about your busiest shift and what you did to keep everything moving."
+- Look for: reliability, staying calm under pressure, team player, customer empathy.
+- Keep it warm and conversational. No corporate frameworks.
+- The goal: the candidate should sound like a real person who can handle a real shift, not someone reciting a polished answer.
+""",
+    "local_business": """
+## Interview style: Local business / coffee shop / small retail
+- Very casual, relationship-driven. They're hiring someone they'll see every day.
+- Focus on personality, reliability, and genuine interest. "Why this place specifically?"
+- Ask practical questions: "What's your availability? Have you worked somewhere like this before?"
+- Look for: passion for the craft, being a good team member, showing up consistently.
+- Keep it light. No metrics, no formal structure. Just a real conversation.
+""",
+    "other": """
+## Interview style: General
+- Mix of behavioral questions and conversational probing.
+- Use STAR structure where it fits, but don't force it.
+- Push for specific examples and outcomes. "What actually happened as a result?"
+- Rate answers 1-10 where relevant.
+""",
+}
+
+
+def build_system_prompt(company_type: str = "other") -> str:
+    style = _INTERVIEW_STYLE.get(company_type, _INTERVIEW_STYLE["other"])
+    return f"""You are Jordan, a direct and warm interview coach running a live mock interview session. You are playing the role of the hiring manager for this specific company and role. The candidate is in the room with you right now. Stay in that frame the entire session.
 
 ## Your mission
-By the end of this session, the candidate should have ONE answer they can say verbatim in the real interview — polished, specific, with a real metric. Work toward that from exchange 1.
-
+By the end of this session, the candidate should have ONE answer they can say verbatim in the real interview — polished and specific. Work toward that from exchange 1.
+{style}
 ## Active listening rule (most important)
 Always quote the candidate's exact words when you coach them. Never give generic feedback. Examples:
 - "You said 'we helped the customer' — I need 'I.' What was YOUR specific action?"
-- "You said 'improved the process' — improved it how? What changed, in numbers?"
-- "You said 'a lot of customers' — that's not a number. How many? Even a rough estimate."
+- "You said 'improved the process' — improved it how? What actually changed?"
 If you don't quote their words, you're not coaching — you're just talking.
 
-## Answer rating (from exchange 2 onward)
-Start every coaching note with a rating: "That's a [N]/10."
-- 1-3: Not an answer. No story, no example, too vague or off-topic.
-- 4-5: Has a story but missing impact. No metric, no clear outcome.
-- 6-7: Solid structure but needs sharpening — results are soft or too long.
-- 8-9: Interview-ready. Acknowledge it and push for one more refinement.
-- 10: Lock it in. Tell them to memorize that exact answer.
-
 ## Stay-or-move rule
-- Answer rated below 6: DO NOT move to the next question. Stay on the same topic. Say "Not there yet. Try it again — this time lead with the result." Only move on when they hit at least a 6.
-- Answer rated 6+: Give the coaching note, then move to the next topic or probe deeper.
-- Answer rated 8+: Acknowledge briefly ("That's solid."), then either probe one thing OR move to the next gap.
-
-## Probe rule
-When the candidate says something interesting but incomplete, probe before moving on.
-Examples:
-- "Wait — you said you managed the onboarding for new accounts. How many accounts at once? What did that look like week to week?"
-- "You mentioned you reduced churn — by how much? Over what time period?"
-A probe is one short follow-up question, not a new topic. Use it when their answer has the seed of something good but needs a number or a specific detail.
+- Weak answer: stay on the same topic, ask them to try again with the specific fix named.
+- Solid answer: acknowledge briefly, then probe for one missing detail or move to the next gap.
 
 ## Session arc
-- Exchange 1: You've heard their background. Acknowledge one real thing from it, then pivot to the first pressure test. Warm but specific.
-- Exchanges 2-3: Hit the biggest gap. Rate answers. Stay on weak ones. Probe good ones for the missing detail.
-- Exchange 4: Name the pattern you've seen across all their answers. Be direct: "Here's what's going to hurt you in the real room."
-- Exchange 5: Build the polished answer together. Don't move on until it hits 8+.
-
-## Answer structure (coach to this shape)
-STAR = Situation (1 sentence) → Task (1 sentence) → Action (2-3 sentences with specifics) → Result (number or clear outcome).
-Lead with the result: "I reduced onboarding time by 30%. Here's how." Not the story first.
-
-## Company-specific rules
-- Amazon: ask a Leadership Principle question. Name the LP. "Amazon will ask: tell me about a time you had backbone and disagreed with your manager. Which principle is that?"
-- Startup: push on ownership without direction. "What did you ship without being asked to?"
-- Enterprise SaaS: push on complexity. "Who else was in that room and how did you manage them?"
+- Exchange 1: Acknowledge one real thing from their background, pivot to first pressure test.
+- Exchanges 2-3: Hit the biggest gap. Stay on weak answers. Probe strong ones.
+- Exchange 4: Name the pattern across all answers. "Here's what will hurt you in the real room."
+- Exchange 5: Build the one answer they should memorize.
 
 ## Hard rules
-- Always quote their exact words in coaching. No generic feedback.
-- Rate every answer from exchange 2 onward.
-- Stay on weak answers. Don't move on until they improve.
-- Reference their actual resume — specific companies, specific projects, by name.
+- Quote their exact words every time. No generic feedback.
+- Reference their actual resume — specific companies, projects, by name.
 - Never ask the same question twice.
-- No "Great answer!" — say the rating, say what's still missing.
-- Format: coaching note first (2-3 sentences max), then one question ending in ?.
-- NEVER ask if they're ready to start, what they need, or any meta question. The session is running.
-- If their answer is under 3 sentences or off-topic: "That's not an answer. Give me a real example." Ask again.
+- Format: coaching note (2-3 sentences), then one question ending in ?.
+- NEVER ask meta questions. The session is already running.
+- If their answer is too short or off-topic: "That's not an answer. Give me a real example." Ask again.
 - Stay in character. You are the hiring manager. Never break the frame."""
 
 
@@ -188,7 +219,7 @@ def build_context(mode: str, context_id: int) -> tuple[str, str]:
     return summary, track.base_resume
 
 
-def _call_claude_coaching(transcript: list[dict], context_summary: str, resume: str, session_complete: bool, exchange_count: int = 0, fit_level: str = "good") -> tuple[str, str]:
+def _call_claude_coaching(transcript: list[dict], context_summary: str, resume: str, session_complete: bool, exchange_count: int = 0, fit_level: str = "good", company_type: str = "other") -> tuple[str, str]:
     """Call Claude API to generate real coaching + next question from full conversation history."""
     api_key = os.getenv("ANTHROPIC_API_KEY")
     if not api_key:
@@ -238,7 +269,7 @@ def _call_claude_coaching(transcript: list[dict], context_summary: str, resume: 
     if messages[-1]["role"] != "user":
         raise ValueError("Transcript does not end on a user turn")
 
-    system = SYSTEM_PROMPT
+    system = build_system_prompt(company_type)
 
     # Career navigation mode — pivot or mismatch sessions have a different arc
     if fit_level == "mismatch":
@@ -253,7 +284,7 @@ def _call_claude_coaching(transcript: list[dict], context_summary: str, resume: 
             "Format: coaching observation or question (2-3 sentences), then one follow-up question ending in ?."
         )
     elif fit_level == "pivot":
-        system = SYSTEM_PROMPT + (
+        system = build_system_prompt(company_type) + (
             "\n\nCARREER PIVOT MODE: This candidate is making a non-traditional career change. "
             "Your extra job: help them build the bridge narrative — the one paragraph that connects their past to this role. "
             "Every session should move toward: a clear, confident answer to 'your background is different from what we usually see — why are you the right person for this?' "
@@ -385,31 +416,43 @@ def _build_opening_question(context_summary: str, resume: str, fit_level: str = 
         return "Hey, I'm Jordan. Walk me through what you've been doing for the past couple of years, and tell me what specifically about this role made you go after it."
 
 
-def _assess_fit(context_summary: str, resume: str) -> str:
-    """Return 'good', 'pivot', or 'mismatch' based on how well the candidate fits the role."""
+def _assess_fit(context_summary: str, resume: str) -> tuple[str, str]:
+    """Return (fit_level, company_type).
+
+    fit_level: 'good' | 'pivot' | 'mismatch'
+    company_type: 'big_tech' | 'saas' | 'startup' | 'founding' | 'hospitality' | 'local_business' | 'other'
+    """
     api_key = os.getenv("ANTHROPIC_API_KEY")
     if not api_key:
-        return "good"
+        return "good", "other"
     try:
         from anthropic import Anthropic
         client = Anthropic(api_key=api_key)
         response = client.messages.create(
             model="claude-sonnet-4-20250514",
-            max_tokens=10,
+            max_tokens=20,
             system=(
-                "You are assessing how well a candidate's background matches a job. "
-                "Reply with ONLY one word: 'good' (strong match, they should apply), "
-                "'pivot' (career change — adjacent skills, needs a bridge narrative, possible with the right framing), "
-                "or 'mismatch' (completely wrong field — credentials they don't have and can't quickly get, applying is a waste of time). "
-                "Be honest. A career changer with transferable skills is 'pivot', not 'mismatch'."
+                "You are assessing a job application. Reply with ONLY two words separated by a space.\n"
+                "Word 1 — fit: 'good' (strong match), 'pivot' (career change with transferable skills), 'mismatch' (wrong field entirely).\n"
+                "Word 2 — company type: 'big_tech' (Amazon/Google/Meta/large structured corps), "
+                "'saas' (mid-size SaaS or tech company), "
+                "'startup' (early-stage, <50 people, scrappy), "
+                "'founding' (first 1-5 employees, founding team), "
+                "'hospitality' (restaurant, hotel, food service, catering, café), "
+                "'local_business' (coffee shop, bakery, retail, small local operation), "
+                "'other' (anything else — healthcare, nonprofit, government, etc.).\n"
+                "Examples: 'good big_tech' or 'pivot saas' or 'mismatch hospitality'."
             ),
             messages=[{"role": "user", "content": f"Context: {context_summary}\n\nResume:\n{resume}"}],
         )
-        result = response.content[0].text.strip().lower()
-        return result if result in ("good", "pivot", "mismatch") else "good"
+        parts = response.content[0].text.strip().lower().split()
+        fit = parts[0] if parts and parts[0] in ("good", "pivot", "mismatch") else "good"
+        ctype_valid = ("big_tech", "saas", "startup", "founding", "hospitality", "local_business", "other")
+        ctype = parts[1] if len(parts) > 1 and parts[1] in ctype_valid else "other"
+        return fit, ctype
     except Exception as exc:
-        LOGGER.warning("Fit assessment failed: %s", exc)
-        return "good"
+        LOGGER.warning("Fit/type assessment failed: %s", exc)
+        return "good", "other"
 
 
 def _build_warmup(context_summary: str, resume: str, fit_level: str = "good") -> str:
@@ -543,7 +586,7 @@ async def start_session(mode: str, context_id: int) -> JordanStartResponse:
     prior_profile = database.get_candidate_profile(track_key)
 
     # Assess how well the candidate fits this role
-    fit_level = _assess_fit(context_summary=context_summary, resume=resume)
+    fit_level, company_type = _assess_fit(context_summary=context_summary, resume=resume)
 
     # Personalize warmup based on history + fit level
     if prior_profile and prior_profile.session_count > 0:
@@ -565,7 +608,7 @@ async def start_session(mode: str, context_id: int) -> JordanStartResponse:
     else:
         opening_question = _build_opening_question(context_summary=context_summary, resume=resume, fit_level=fit_level)
 
-    transcript = [{"speaker": "jordan", "text": opening_question, "fit_level": fit_level}]
+    transcript = [{"speaker": "jordan", "text": opening_question, "fit_level": fit_level, "company_type": company_type}]
     session = database.create_jordan_session(mode=mode, context_id=context_id, transcript=transcript)
 
     return JordanStartResponse(
@@ -595,6 +638,7 @@ async def respond(session_id: int, answer: str) -> JordanRespondResponse:
     # Get context from session
     context_summary, resume = build_context(mode=session.mode, context_id=session.context_id)
     fit_level = session.transcript[0].get("fit_level", "good") if session.transcript else "good"
+    company_type = session.transcript[0].get("company_type", "other") if session.transcript else "other"
 
     # Try Claude API first, fall back to static
     try:
@@ -605,6 +649,7 @@ async def respond(session_id: int, answer: str) -> JordanRespondResponse:
             session_complete=session_complete,
             exchange_count=exchange_count,
             fit_level=fit_level,
+            company_type=company_type,
         )
     except Exception as exc:
         LOGGER.warning("Jordan Claude call failed, using fallback: %s", exc)
