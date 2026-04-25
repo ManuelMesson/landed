@@ -16,18 +16,26 @@
     <!-- ── Onboarding modal (first visit) ── -->
     <div id="onboarding-overlay" class="onboarding-overlay hidden">
       <div class="onboarding-card">
-        <div class="onboarding-card-header">
-          <p class="onboarding-kicker">One-time setup</p>
-          <h2 class="onboarding-title">Your edge starts here.</h2>
-          <p class="onboarding-sub">Paste your resume once. Every job post you analyze gets scored against it — instantly.</p>
+        <p class="onboarding-kicker">One-time setup</p>
+
+        <!-- Jordan introduces herself -->
+        <div class="onboarding-jordan-intro">
+          <div class="onboarding-jordan-avatar">
+            <div class="onboarding-avatar-ring">
+              <span class="onboarding-avatar-letter">J</span>
+            </div>
+            <div class="onboarding-avatar-pulse"></div>
+          </div>
+          <div class="onboarding-jordan-body">
+            <span class="onboarding-jordan-name">Jordan</span>
+            <p class="onboarding-jordan-line">I'm Jordan. I coach people through job interviews so they walk in knowing exactly what to say. To start, I need your resume.</p>
+          </div>
         </div>
+
         <textarea id="onboarding-resume" class="onboarding-textarea" placeholder="Paste your full resume — work experience, skills, education, projects…"></textarea>
-        <div class="onboarding-actions">
-          <button id="onboarding-submit" class="cta-button onboarding-submit" type="button">
-            Build my profile →
-          </button>
-          <p class="onboarding-anticipation">Jordan is ready when you are.</p>
-        </div>
+        <button id="onboarding-submit" class="cta-button onboarding-submit" type="button">
+          Build my profile →
+        </button>
         <p class="onboarding-note">Saved to your account. We never ask again.</p>
       </div>
     </div>
