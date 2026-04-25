@@ -16,15 +16,19 @@
     <!-- ── Onboarding modal (first visit) ── -->
     <div id="onboarding-overlay" class="onboarding-overlay hidden">
       <div class="onboarding-card">
-        <div class="onboarding-logo">Landed</div>
-        <h2 class="onboarding-title">Your AI job search co-pilot.</h2>
-        <p class="onboarding-sub">Paste your resume once. Then paste any job post and get an instant fit score, resume suggestions, and interview prep with Jordan.</p>
-        <label class="onboarding-label" for="onboarding-resume">Paste your resume</label>
-        <textarea id="onboarding-resume" class="onboarding-textarea" placeholder="Copy and paste your full resume here — work experience, skills, education, projects..."></textarea>
-        <button id="onboarding-submit" class="cta-button onboarding-submit" type="button">
-          Let's go →
-        </button>
-        <p class="onboarding-note">Your resume is saved locally. If you're signed in, we also save it to your account.</p>
+        <div class="onboarding-card-header">
+          <p class="onboarding-kicker">One-time setup</p>
+          <h2 class="onboarding-title">Your edge starts here.</h2>
+          <p class="onboarding-sub">Paste your resume once. Every job post you analyze gets scored against it — instantly.</p>
+        </div>
+        <textarea id="onboarding-resume" class="onboarding-textarea" placeholder="Paste your full resume — work experience, skills, education, projects…"></textarea>
+        <div class="onboarding-actions">
+          <button id="onboarding-submit" class="cta-button onboarding-submit" type="button">
+            Build my profile →
+          </button>
+          <p class="onboarding-anticipation">Jordan is ready when you are.</p>
+        </div>
+        <p class="onboarding-note">Saved to your account. We never ask again.</p>
       </div>
     </div>
 
