@@ -477,7 +477,7 @@ def _assess_fit(context_summary: str, resume: str) -> tuple[str, str]:
         return "good", "other"
 
 
-def _build_warmup(context_summary: str, resume: str, fit_level: str = "good") -> str:
+def _build_warmup(context_summary: str, resume: str, fit_level: str = "good", candidate_name: str = "") -> str:
     """Generate a Jordan warmup briefing using real resume context."""
     api_key = os.getenv("ANTHROPIC_API_KEY")
     if not api_key:
@@ -486,31 +486,43 @@ def _build_warmup(context_summary: str, resume: str, fit_level: str = "good") ->
         from anthropic import Anthropic
         client = Anthropic(api_key=api_key)
 
+        name_instruction = (
+            f" The candidate's name is {candidate_name}. Use their name once, naturally, mid-warmup — "
+            f"not as a greeting opener. Treat them like someone you know and are invested in."
+        ) if candidate_name else ""
+
         if fit_level == "mismatch":
             system = (
-                "You are Jordan, a career coach. The candidate is looking at a job that's a poor fit. "
+                "You are Jordan, a career coach who knows this candidate personally and cares about their success. "
+                "The candidate is looking at a job that's a poor fit. "
                 "Write exactly 3 short sentences — direct, warm, honest. No fluff, no long paragraphs. "
                 "Sentence 1: Name the specific reason this role isn't the right target (missing credential, wrong field). One sentence. "
                 "Sentence 2: Name ONE real strength from their resume (specific company or project) and say why it matters for a better-fit role. "
                 "Sentence 3: Name the better target they should pursue instead — be specific (e.g. 'Customer Success at a SaaS company'). "
                 "Do NOT add extra sentences. 3 sentences total, nothing more."
+                + name_instruction
             )
         elif fit_level == "pivot":
             system = (
-                "You are Jordan, an interview coach. The candidate is making a career pivot — they don't have the traditional background but have transferable skills. "
+                "You are Jordan, an interview coach who knows this candidate and is invested in their pivot working. "
+                "The candidate is making a career pivot — they don't have the traditional background but have transferable skills. "
                 "Write 3 sentences that set them up for a pivot narrative. "
                 "Sentence 1: Name the specific requirement from this job that will be the hardest to explain without the traditional background. "
                 "Sentence 2: Name the strongest transferable skill or experience from their actual resume (specific company or project) and explain why it matters for this role. "
                 "Sentence 3: Name the bridge narrative they need to build — the one sentence that connects their past to this role. "
-                "Sound like a coach who believes in the pivot but is clear-eyed about what it takes."
+                "Sound like a coach who believes in them but is clear-eyed about what it takes."
+                + name_instruction
             )
         else:
             system = (
-                "You are Jordan, an interview coach. Write a 3-sentence warmup that proves you read both the job post and the resume. "
+                "You are Jordan, an interview coach who has done their homework on this specific candidate and this specific role. "
+                "Write a 3-sentence warmup that proves you read both the job post and the resume — and that you know this person. "
                 "Sentence 1: Name a specific requirement or phrase FROM the job post and say what it actually means they'll ask. "
                 "Sentence 2: Name which of the candidate's real experiences (specific company or project) is the strongest match and why. "
-                "Sentence 3: Name the one gap that's most likely to get them rejected — be blunt. "
-                "Sound like a coach who did their homework, not a template. No generic phrases like 'this role values communication.'"
+                "Sentence 3: Name the one gap that's most likely to get them rejected — be direct and personal, not generic. "
+                "Sound like a coach who did their homework and cares whether this person gets the job. "
+                "No generic phrases like 'this role values communication.' No filler. Make it feel like you've been watching their career."
+                + name_instruction
             )
 
         response = client.messages.create(
@@ -610,16 +622,23 @@ async def start_session(*, mode: str, context_id: int, user_id: int) -> JordanSt
     # Assess how well the candidate fits this role
     fit_level, company_type = _assess_fit(context_summary=context_summary, resume=resume)
 
-    # Personalize warmup based on history + fit level
+    # Personalize warmup based on history + fit level + who they are
+    candidate_name = _user_first_name(user)
     if prior_profile and prior_profile.session_count > 0:
-        weakness_hint = f" Last time your main weakness was: {prior_profile.known_weaknesses[0]}." if prior_profile.known_weaknesses else ""
+        weakness_hint = f" Last time {candidate_name}'s main weakness was: {prior_profile.known_weaknesses[0]}." if prior_profile.known_weaknesses else ""
         warmup_text = _build_warmup(
             context_summary=context_summary + weakness_hint,
             resume=resume,
             fit_level=fit_level,
+            candidate_name=candidate_name,
         )
     else:
-        warmup_text = _build_warmup(context_summary=context_summary, resume=resume, fit_level=fit_level)
+        warmup_text = _build_warmup(
+            context_summary=context_summary,
+            resume=resume,
+            fit_level=fit_level,
+            candidate_name=candidate_name,
+        )
 
     # Opening question — adapt to fit level and session history
     if fit_level in ("mismatch", "pivot"):

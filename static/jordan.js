@@ -136,32 +136,52 @@ function setInputEnabled(on) {
 
 function renderWarmup(data) {
   applySessionBadge(data.fit_level);
-  const focusText = data.known_weaknesses.length
-    ? `<p class="warmup-focus">Focus this round: <em>${escapeHtml(data.known_weaknesses[0])}</em></p>`
-    : "";
-  const displayName = data.display_name ? `<p class="warmup-greeting">All right, ${escapeHtml(data.display_name)}.</p>` : "";
+  const name = data.display_name ? escapeHtml(data.display_name) : "";
+  const hasHistory = data.session_count > 0;
+  const hasWeakness = data.known_weaknesses && data.known_weaknesses.length > 0;
 
-  const readinessMarkup = data.session_count > 0
+  // Greeting — specific to where they are in the journey
+  let greetingText = "";
+  if (name) {
+    if (!hasHistory) {
+      greetingText = `${name}. First session. Let's find out exactly where you stand.`;
+    } else if (data.readiness_score >= 8) {
+      greetingText = `${name}. You're at ${data.readiness_score.toFixed(1)}/10 — that's real. Let's keep going.`;
+    } else if (hasWeakness) {
+      greetingText = `${name}. You're back. Last time ${data.known_weaknesses[0]} held you down — that's what we're fixing today.`;
+    } else {
+      greetingText = `${name}. Good to see you back. Let's pick up where we left off.`;
+    }
+  }
+  const displayName = greetingText ? `<p class="warmup-greeting">${greetingText}</p>` : "";
+
+  // Readiness section — specific, not generic
+  const pushText = hasWeakness
+    ? `${data.readiness_score.toFixed(1)}/10 last round. ${data.known_weaknesses[0]} is still the gap — let's close it.`
+    : `${data.readiness_score.toFixed(1)}/10. Let's push higher this round.`;
+
+  const readinessMarkup = hasHistory
     ? `
       <section class="warmup-readiness">
-        <span class="warmup-readiness-label">Readiness score</span>
+        <span class="warmup-readiness-label">Where you left off</span>
         <div class="warmup-readiness-row">
           <div class="warmup-readiness-score">${data.readiness_score.toFixed(1)}<span>/10</span></div>
-          <p class="warmup-readiness-push">You're at ${data.readiness_score.toFixed(1)}/10, let's push it.</p>
+          <p class="warmup-readiness-push">${pushText}</p>
         </div>
-        ${focusText}
       </section>
     `
     : "";
 
-  const sessionLine = data.session_count > 0
-    ? `Session ${data.session_count + 1}`
-    : "First session";
+  const sessionLine = hasHistory ? `Session ${data.session_count + 1}` : "First session";
 
   if (warmupReturningNote) {
-    warmupReturningNote.textContent = data.session_count > 0
-      ? `Jordan remembers your last round.`
-      : "Jordan is getting the room ready.";
+    if (hasHistory && hasWeakness) {
+      warmupReturningNote.textContent = `Jordan remembers: ${data.known_weaknesses[0]}.`;
+    } else if (hasHistory) {
+      warmupReturningNote.textContent = `Jordan remembers your last round.`;
+    } else {
+      warmupReturningNote.textContent = `Jordan has read your resume and the job post.`;
+    }
   }
 
   warmupCard.innerHTML = `
