@@ -185,6 +185,13 @@ body {
   opacity: 0.9;
 }
 
+.auth-greeting {
+  color: var(--accent);
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
 [data-auth-slot] {
   display: inline-flex;
   align-items: center;

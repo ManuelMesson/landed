@@ -155,6 +155,14 @@ TRACK_FOCUS = {
 }
 
 
+def _user_first_name(user: "database.UserRecord | None") -> str:
+    """Extract first name from email for personal greeting."""
+    if not user or not user.email:
+        return ""
+    local = user.email.split("@")[0].split(".")[0]
+    return local.capitalize()
+
+
 def build_context(mode: str, context_id: int, *, user_id: int) -> tuple[str, str]:
     """Returns (context_summary, resume_text)."""
     if mode == "job":
@@ -168,6 +176,7 @@ def build_context(mode: str, context_id: int, *, user_id: int) -> tuple[str, str
         track = database.get_track(job.track_id) if job.track_id else None
         user = database.get_user_by_id(user_id)
         resume = user.resume if user and user.resume else (track.base_resume if track else "")
+        candidate_name = _user_first_name(user)
         track_focus = TRACK_FOCUS.get(track.name, "") if track else ""
         talking_points = job.analysis.talking_points if job.analysis else []
         key_requirements = job.analysis.key_requirements if job.analysis else []
@@ -201,7 +210,9 @@ def build_context(mode: str, context_id: int, *, user_id: int) -> tuple[str, str
             job_excerpt = job.job_post[:800].strip()
             job_post_section = f"\n\nActual job post (read this to reference specific requirements and language in your questions):\n{job_excerpt}"
 
+        name_prefix = f"Candidate name: {candidate_name}. Use their name naturally — once at the start, sparingly after. " if candidate_name else ""
         summary = (
+            f"{name_prefix}"
             f"Job prep: {job.company} — {job.role}. "
             f"{track_focus}"
             f"{company_section}"
@@ -216,8 +227,10 @@ def build_context(mode: str, context_id: int, *, user_id: int) -> tuple[str, str
     if track is None:
         raise ValueError("Track not found")
     track_focus = TRACK_FOCUS.get(track.name, f"Prep for {track.display_name} roles.")
-    summary = f"Track prep: {track.display_name}. {track_focus}"
     user = database.get_user_by_id(user_id)
+    candidate_name = _user_first_name(user)
+    name_prefix = f"Candidate name: {candidate_name}. Use their name naturally — once at the start, sparingly after. " if candidate_name else ""
+    summary = f"{name_prefix}Track prep: {track.display_name}. {track_focus}"
     return summary, (user.resume if user and user.resume else track.base_resume)
 
 

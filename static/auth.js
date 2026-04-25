@@ -70,9 +70,12 @@ function renderAuthNav(user = null) {
   if (!slot) return;
 
   if (user) {
+    const localPart = user.email.split("@")[0];
+    const firstName = localPart.split(/[._\-0-9]/)[0];
+    const displayName = firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase();
     slot.innerHTML = `
-      <span class="auth-email">${user.email}</span>
-      <a href="#" class="nav-pill" data-logout-link>Log out</a>
+      <span class="auth-greeting">Hey, ${displayName}</span>
+      <a href="#" class="nav-pill nav-pill-logout" data-logout-link>Log out</a>
     `;
     slot.querySelector("[data-logout-link]")?.addEventListener("click", (event) => {
       event.preventDefault();
