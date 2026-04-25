@@ -48,8 +48,10 @@
 
       <!-- ── STEP 1: Paste a job post ── -->
       <section id="stage-input" class="stage stage-active">
-        <h2 class="stage-label">Paste a job post</h2>
-        <textarea id="job-post" class="job-textarea" placeholder="Paste the full job description here…"></textarea>
+        <div class="input-panel">
+          <textarea id="job-post" class="job-textarea" placeholder="Paste the full job post here — analysis starts automatically…"></textarea>
+          <p class="input-hint">AI analysis kicks off as you paste — no button needed.</p>
+        </div>
         <div id="analysis-loading" class="skeleton-row hidden">
           <div class="skeleton-card"></div>
           <div class="skeleton-card"></div>

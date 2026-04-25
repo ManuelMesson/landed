@@ -263,28 +263,44 @@ body {
 
 /* ── Stage 1: Input ── */
 
+.input-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
 .job-textarea {
   width: 100%;
   min-height: 220px;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid var(--panel-border);
-  border-radius: var(--radius);
-  padding: 20px;
+  background: linear-gradient(180deg, rgba(124,58,237,0.04), rgba(37,99,235,0.02));
+  border: 1px solid rgba(124,58,237,0.22);
+  border-radius: 24px;
+  padding: 22px 24px;
   color: var(--text);
   font: inherit;
   font-size: 1rem;
-  line-height: 1.6;
+  line-height: 1.7;
   resize: vertical;
-  transition: border-color 200ms, box-shadow 200ms;
+  transition: border-color 220ms, box-shadow 220ms, background 220ms;
+  box-shadow: 0 0 0 1px rgba(124,58,237,0.06), inset 0 1px 0 rgba(255,255,255,0.04);
 }
 
 .job-textarea:focus {
   outline: none;
-  border-color: rgba(124,58,237,0.5);
-  box-shadow: 0 0 0 3px rgba(124,58,237,0.12);
+  border-color: rgba(124,58,237,0.55);
+  background: linear-gradient(180deg, rgba(124,58,237,0.07), rgba(37,99,235,0.04));
+  box-shadow: 0 0 0 3px rgba(124,58,237,0.14), 0 0 28px rgba(124,58,237,0.08);
 }
 
-.job-textarea::placeholder { color: var(--muted); }
+.job-textarea::placeholder { color: var(--muted); opacity: 0.7; }
+
+.input-hint {
+  font-size: 0.76rem;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+  padding-left: 4px;
+  opacity: 0.7;
+}
 
 .stage-actions {
   margin-top: 16px;
