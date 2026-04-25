@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [ "$#" -ne 2 ]; then
+  echo "Usage: $0 <summary> <next_step>" >&2
+  exit 1
+fi
+
+root_dir="$(cd "$(dirname "$0")/.." && pwd)"
+out_dir="$root_dir/system/inbox/team-notes"
+mkdir -p "$out_dir"
+
+timestamp="$(date +%Y%m%d-%H%M%S)"
+out_file="$out_dir/${timestamp}-codex-handoff.md"
+
+cat > "$out_file" <<EOF
+# Codex Handoff
+
+- Summary: $1
+- Next step: $2
+- Exported at: $(date -Is)
+EOF
+
+echo "$out_file"

@@ -17,6 +17,7 @@ def _test_env_defaults(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("LANDED_AUDIO_DIR", str(tmp_path / "audio"))
     monkeypatch.setenv("LANDED_DISABLE_TTS", "1")
     monkeypatch.setenv("ANTHROPIC_API_KEY", "")
+    monkeypatch.setenv("JWT_SECRET", "test-jwt-secret")
 
 
 @pytest.fixture()

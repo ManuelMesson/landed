@@ -7,6 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css" />
+    <script defer src="/static/auth.js"></script>
     <script defer src="/static/tracker.js"></script>
   </head>
   <body data-page="tracker">
@@ -19,6 +20,7 @@
         <nav class="top-nav">
           <a href="/" class="nav-link">Analyzer</a>
           <a href="/tracker" class="nav-link current">Your Pipeline</a>
+          <span data-auth-slot></span>
         </nav>
       </header>
 

@@ -1,3 +1,4 @@
+const { fetchCurrentUser, fetchJson, redirectToLogin, renderAuthNav, requireAuth } = window.LandedAuth;
 const phaseWarmup  = document.querySelector("#phase-warmup");
 const phaseSession = document.querySelector("#phase-session");
 const phaseSummary = document.querySelector("#phase-summary");
@@ -85,7 +86,7 @@ async function loadSession() {
     ? { mode, job_id: Number(params.get("job_id")) }
     : { mode, track_id: Number(params.get("track_id") || 1) };
 
-  const response = await fetch("/jordan/session/start", {
+  const response = await fetchJson("/jordan/session/start", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -157,7 +158,7 @@ async function sendAnswer(answer) {
   setInputEnabled(false);
   setThinking(true);
 
-  const response = await fetch("/jordan/session/respond", {
+  const response = await fetchJson("/jordan/session/respond", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ session_id: sessionId, answer: lastAnswer }),
@@ -283,17 +284,28 @@ restartButton.addEventListener("click", () => {
 
 // ── Boot ──
 
-setupMic();
-
 const _params = new URLSearchParams(window.location.search);
 const _hasContext = _params.get("mode") === "job" ? !!_params.get("job_id") : !!_params.get("track_id");
 
-if (!_hasContext && !_params.get("mode")) {
-  // No context at all — redirect to analyzer
-  warmupCard.innerHTML = `<p class="warmup-text">Analyze a job first, then come back to prep. <a href="/" style="color:var(--accent);text-decoration:none">← Back to analyzer</a></p>`;
-  startButton.remove();
-} else {
+async function bootstrap() {
+  if (!requireAuth()) return;
+  const user = await fetchCurrentUser();
+  if (!user) {
+    redirectToLogin();
+    return;
+  }
+  renderAuthNav(user);
+  setupMic();
+
+  if (!_hasContext && !_params.get("mode")) {
+    warmupCard.innerHTML = `<p class="warmup-text">Analyze a job first, then come back to prep. <a href="/" style="color:var(--accent);text-decoration:none">← Back to analyzer</a></p>`;
+    startButton.remove();
+    return;
+  }
+
   loadSession().catch((err) => {
     warmupCard.innerHTML = `<p class="warmup-text" style="color:var(--red)">Could not connect to Jordan: ${err.message}</p>`;
   });
 }
+
+bootstrap();

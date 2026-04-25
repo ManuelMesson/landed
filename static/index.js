@@ -1,4 +1,4 @@
-const RESUME_KEY = "landed_user_resume";
+const { RESUME_KEY, fetchCurrentUser, fetchJson, getToken, isLoggedIn, redirectToLogin, renderAuthNav } = window.LandedAuth;
 
 const state = {
   currentAnalysis: null,
@@ -13,6 +13,15 @@ function getUserResume() {
 
 function saveUserResume(text) {
   if (text.trim()) localStorage.setItem(RESUME_KEY, text.trim());
+}
+
+async function persistResume(text) {
+  if (!isLoggedIn()) return;
+  await fetchJson("/auth/resume", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ resume: text.trim() }),
+  });
 }
 
 // ── Onboarding ──
@@ -37,6 +46,7 @@ function initOnboarding() {
     if (!resume) { showToast("Paste your resume first.", "error"); return; }
     saveUserResume(resume);
     hideOnboarding();
+    persistResume(resume).catch(() => showToast("Resume saved locally. Cloud save failed.", "error"));
     showToast("Resume saved ✓");
   });
 }
@@ -174,11 +184,14 @@ async function runAnalysis() {
   if (analyzeButton) analyzeButton.textContent = "Analyzing...";
 
   try {
-    const response = await fetch("/analyze", {
+    const response = await fetchJson("/analyze", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ job_post: jobText, resume, track_id: 1 }),
     });
+    if (!response.ok) {
+      throw new Error("analysis failed");
+    }
     const payload = await response.json();
     renderAnalysis(payload);
   } catch {
@@ -223,6 +236,10 @@ async function saveToPipeline() {
     showToast("Already saved ✓");
     return;
   }
+  if (!getToken()) {
+    redirectToLogin();
+    return;
+  }
 
   try {
     const payload = {
@@ -237,11 +254,18 @@ async function saveToPipeline() {
       interview_prep: (state.currentAnalysis.talking_points || []).join(" "),
       notes: "",
     };
-    const response = await fetch("/jobs", {
+    const response = await fetchJson("/jobs", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
+    if (response.status === 401) {
+      redirectToLogin();
+      return;
+    }
+    if (!response.ok) {
+      throw new Error("save failed");
+    }
     const job = await response.json();
     state.savedJobId = job.id;
 
@@ -260,6 +284,11 @@ document.querySelector("#save-pipeline-btn")?.addEventListener("click", saveToPi
 // ── Jordan link: save first if not yet saved ──
 document.querySelector("#jordan-link")?.addEventListener("click", async (e) => {
   if (!state.currentAnalysis) return; // let default navigation happen
+  if (!getToken()) {
+    e.preventDefault();
+    redirectToLogin();
+    return;
+  }
   if (!state.savedJobId) {
     e.preventDefault();
     await saveToPipeline();
@@ -269,4 +298,24 @@ document.querySelector("#jordan-link")?.addEventListener("click", async (e) => {
   }
 });
 
-initOnboarding();
+async function bootstrap() {
+  let currentUser = null;
+  if (isLoggedIn()) {
+    try {
+      currentUser = await fetchCurrentUser();
+    } catch {
+      currentUser = null;
+    }
+  }
+
+  renderAuthNav(currentUser);
+
+  if (!isLoggedIn() && !getUserResume()) {
+    redirectToLogin();
+    return;
+  }
+
+  initOnboarding();
+}
+
+bootstrap();

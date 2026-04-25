@@ -3,10 +3,17 @@ import pytest
 from models import AnalyzeRequest
 
 
-async def _create_job(client) -> int:
+async def _register_and_auth(client, email: str = "sam@example.com") -> dict[str, str]:
+    response = await client.post("/auth/register", json={"email": email, "password": "password123"})
+    token = response.json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}
+
+
+async def _create_job(client, headers: dict[str, str]) -> int:
     analysis = (
         await client.post(
         "/analyze",
+        headers=headers,
         json=AnalyzeRequest(
             job_post="Customer support role focused on onboarding, retention, and issue resolution.",
             resume="Customer onboarding, retention, issue resolution, and metrics like 20 percent growth.",
@@ -16,6 +23,7 @@ async def _create_job(client) -> int:
     ).json()
     response = await client.post(
         "/jobs",
+        headers=headers,
         json={
             "track_id": 1,
             "company": "Amazon",
@@ -34,8 +42,9 @@ async def _create_job(client) -> int:
 
 @pytest.mark.anyio
 async def test_log_application_with_track(client) -> None:
-    job_id = await _create_job(client)
-    response = await client.get(f"/jobs/{job_id}")
+    headers = await _register_and_auth(client)
+    job_id = await _create_job(client, headers)
+    response = await client.get(f"/jobs/{job_id}", headers=headers)
     payload = response.json()
     assert payload["track_id"] == 1
     assert payload["company"] == "Amazon"
@@ -43,8 +52,9 @@ async def test_log_application_with_track(client) -> None:
 
 @pytest.mark.anyio
 async def test_get_applications_by_track(client) -> None:
-    await _create_job(client)
-    response = await client.get("/jobs", params={"track_id": 1})
+    headers = await _register_and_auth(client)
+    await _create_job(client, headers)
+    response = await client.get("/jobs", params={"track_id": 1}, headers=headers)
     payload = response.json()
     assert len(payload) == 1
     assert payload[0]["track_name"] == "customer-success"
@@ -52,7 +62,8 @@ async def test_get_applications_by_track(client) -> None:
 
 @pytest.mark.anyio
 async def test_update_application_status(client) -> None:
-    job_id = await _create_job(client)
-    response = await client.patch(f"/jobs/{job_id}", json={"status": "Interview"})
+    headers = await _register_and_auth(client)
+    job_id = await _create_job(client, headers)
+    response = await client.patch(f"/jobs/{job_id}", json={"status": "Interview"}, headers=headers)
     payload = response.json()
     assert payload["status"] == "Interview"

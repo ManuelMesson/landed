@@ -1,3 +1,4 @@
+const { fetchCurrentUser, fetchJson, redirectToLogin, renderAuthNav, requireAuth } = window.LandedAuth;
 const trackSelectEl = document.querySelector("#tracker-track-select");
 const jobsBody     = document.querySelector("#jobs-body");
 const summaryEl    = document.querySelector("#tracker-summary");
@@ -54,7 +55,7 @@ function detailMarkup(job, profile) {
 
 async function fetchProfile(jobId) {
   try {
-    const res = await fetch(`/jordan/profile/job/${jobId}`);
+    const res = await fetchJson(`/jordan/profile/job/${jobId}`);
     return await res.json();
   } catch {
     return null;
@@ -94,7 +95,7 @@ async function renderJobs(jobs) {
 }
 
 async function loadTracks() {
-  const response = await fetch("/tracks");
+  const response = await fetchJson("/tracks");
   const tracks = await response.json();
   trackSelectEl.innerHTML = `<option value="">All tracks</option>`;
   tracks.forEach((track) => {
@@ -110,7 +111,7 @@ async function loadTracks() {
 async function loadJobs() {
   const params = new URLSearchParams();
   if (trackSelectEl.value) params.set("track_id", trackSelectEl.value);
-  const response = await fetch(`/jobs?${params.toString()}`);
+  const response = await fetchJson(`/jobs?${params.toString()}`);
   const jobs = await response.json();
   await renderJobs(jobs);
 }
@@ -123,4 +124,15 @@ jobsBody.addEventListener("click", (event) => {
   detailRow?.classList.toggle("hidden");
 });
 
-Promise.all([loadTracks(), loadJobs()]);
+async function bootstrap() {
+  if (!requireAuth()) return;
+  const user = await fetchCurrentUser();
+  if (!user) {
+    redirectToLogin();
+    return;
+  }
+  renderAuthNav(user);
+  await Promise.all([loadTracks(), loadJobs()]);
+}
+
+bootstrap();

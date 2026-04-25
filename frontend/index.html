@@ -7,6 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css" />
+    <script defer src="/static/auth.js"></script>
     <script defer src="/static/index.js"></script>
   </head>
   <body data-page="analyzer">
@@ -24,7 +25,7 @@
         <button id="onboarding-submit" class="cta-button" type="button" style="width:100%;justify-content:center">
           Let's go →
         </button>
-        <p class="onboarding-note">Your resume is saved in your browser. Nothing is stored on our servers until you log a job.</p>
+        <p class="onboarding-note">Your resume is saved locally. If you're signed in, we also save it to your account.</p>
       </div>
     </div>
 
@@ -32,6 +33,7 @@
     <header class="top-bar">
       <span class="wordmark">Landed</span>
       <div class="top-bar-right">
+        <div data-auth-slot></div>
         <a href="/tracker" class="nav-pill">Pipeline →</a>
       </div>
     </header>

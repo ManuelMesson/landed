@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Create Account | Landed</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css" />
+    <script defer src="/static/auth.js"></script>
+    <script defer src="/static/register.js"></script>
+  </head>
+  <body data-page="register">
+    <main class="auth-shell">
+      <section class="auth-card">
+        <a href="/" class="wordmark auth-wordmark">Landed</a>
+        <h1 class="auth-title">Create account</h1>
+        <p class="auth-copy">Set up your Landed account. Your resume and jobs will stay scoped to you.</p>
+        <form id="auth-form" class="auth-form">
+          <label class="auth-label" for="email">Email</label>
+          <input id="email" name="email" class="auth-input" type="email" autocomplete="email" required />
+          <label class="auth-label" for="password">Password</label>
+          <input id="password" name="password" class="auth-input" type="password" autocomplete="new-password" required minlength="8" />
+          <p id="auth-error" class="auth-error hidden"></p>
+          <button class="cta-button auth-submit" type="submit">Create account</button>
+        </form>
+        <p class="auth-switch">Already have an account? <a href="/login">Sign in</a></p>
+      </section>
+    </main>
+  </body>
+</html>

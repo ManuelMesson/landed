@@ -7,7 +7,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Iterator
 
-from models import AnalysisResult, CandidateProfile, JobCreate, JobRecord, JobWithTrack, JordanSession, PositionTrack
+from models import AnalysisResult, CandidateProfile, JobCreate, JobRecord, JobWithTrack, JordanSession, PositionTrack, UserRecord
 
 MANUEL_RESUME = """
 Name: Manuel Messon-Roque
@@ -81,6 +81,14 @@ def init_db() -> None:
     with get_connection() as connection:
         connection.executescript(
             """
+            CREATE TABLE IF NOT EXISTS users (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              email TEXT UNIQUE NOT NULL,
+              password_hash TEXT NOT NULL,
+              resume TEXT DEFAULT '',
+              created_at TEXT DEFAULT (datetime('now'))
+            );
+
             CREATE TABLE IF NOT EXISTS position_tracks (
               id INTEGER PRIMARY KEY,
               name TEXT UNIQUE,
@@ -91,6 +99,7 @@ def init_db() -> None:
 
             CREATE TABLE IF NOT EXISTS applications (
               id INTEGER PRIMARY KEY,
+              user_id INTEGER REFERENCES users(id),
               track_id INTEGER REFERENCES position_tracks(id),
               company TEXT,
               role TEXT,
@@ -107,6 +116,7 @@ def init_db() -> None:
 
             CREATE TABLE IF NOT EXISTS jordan_sessions (
               id INTEGER PRIMARY KEY,
+              user_id INTEGER REFERENCES users(id),
               mode TEXT,
               context_id INTEGER,
               transcript TEXT,
@@ -126,6 +136,8 @@ def init_db() -> None:
             );
             """
         )
+        _ensure_column(connection, table="applications", column="user_id", ddl="INTEGER REFERENCES users(id)")
+        _ensure_column(connection, table="jordan_sessions", column="user_id", ddl="INTEGER REFERENCES users(id)")
         count = connection.execute("SELECT COUNT(*) FROM position_tracks").fetchone()[0]
         if count == 0:
             connection.executemany(
@@ -137,9 +149,24 @@ def init_db() -> None:
             )
 
 
+def _ensure_column(connection: sqlite3.Connection, *, table: str, column: str, ddl: str) -> None:
+    """Add a missing column for migration-safe startup."""
+    columns = {
+        row["name"]
+        for row in connection.execute(f"PRAGMA table_info({table})").fetchall()
+    }
+    if column not in columns:
+        connection.execute(f"ALTER TABLE {table} ADD COLUMN {column} {ddl}")
+
+
 def _track_from_row(row: sqlite3.Row) -> PositionTrack:
     """Convert a sqlite row into a track model."""
     return PositionTrack(**dict(row))
+
+
+def _user_from_row(row: sqlite3.Row) -> UserRecord:
+    """Convert a sqlite row into a user model."""
+    return UserRecord(**dict(row))
 
 
 def list_tracks() -> list[PositionTrack]:
@@ -171,6 +198,50 @@ def update_track_resume(track_id: int, resume: str) -> PositionTrack | None:
     return get_track(track_id)
 
 
+def create_user(email: str, password_hash: str) -> UserRecord:
+    """Create a user account."""
+    with get_connection() as connection:
+        cursor = connection.execute(
+            "INSERT INTO users (email, password_hash) VALUES (?, ?)",
+            (email.lower(), password_hash),
+        )
+        user_id = int(cursor.lastrowid)
+    user = get_user_by_id(user_id)
+    if user is None:
+        raise RuntimeError("Failed to load newly created user")
+    return user
+
+
+def get_user_by_email(email: str) -> UserRecord | None:
+    """Return a user by email."""
+    with get_connection() as connection:
+        row = connection.execute(
+            "SELECT id, email, password_hash, resume, created_at FROM users WHERE email = ?",
+            (email.lower(),),
+        ).fetchone()
+    return _user_from_row(row) if row else None
+
+
+def get_user_by_id(user_id: int) -> UserRecord | None:
+    """Return a user by id."""
+    with get_connection() as connection:
+        row = connection.execute(
+            "SELECT id, email, password_hash, resume, created_at FROM users WHERE id = ?",
+            (user_id,),
+        ).fetchone()
+    return _user_from_row(row) if row else None
+
+
+def update_user_resume(user_id: int, resume: str) -> UserRecord | None:
+    """Persist a user's resume text."""
+    with get_connection() as connection:
+        connection.execute(
+            "UPDATE users SET resume = ? WHERE id = ?",
+            (resume, user_id),
+        )
+    return get_user_by_id(user_id)
+
+
 def _job_from_row(row: sqlite3.Row) -> JobWithTrack:
     """Convert a job row and joined track fields into a response model."""
     payload = dict(row)
@@ -186,11 +257,12 @@ def create_job(job: JobCreate) -> JobRecord:
         cursor = connection.execute(
             """
             INSERT INTO applications (
-              track_id, company, role, job_post, date_applied, status,
+              user_id, track_id, company, role, job_post, date_applied, status,
               ats_score, hm_score, analysis, interview_prep, notes
-            ) VALUES (?, ?, ?, ?, ?, 'Applied', ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, 'Applied', ?, ?, ?, ?, ?)
             """,
             (
+                job.user_id,
                 job.track_id,
                 job.company,
                 job.role,
@@ -210,45 +282,50 @@ def create_job(job: JobCreate) -> JobRecord:
     return JobRecord(**stored.model_dump(exclude={"track_name", "track_display_name"}))
 
 
-def list_jobs(track_id: int | None = None) -> list[JobWithTrack]:
+def list_jobs(*, user_id: int, track_id: int | None = None) -> list[JobWithTrack]:
     """Return application rows, optionally filtered by track."""
     query = """
         SELECT
-          a.id, a.track_id, a.company, a.role, a.job_post, a.date_applied, a.status,
+          a.id, a.user_id, a.track_id, a.company, a.role, a.job_post, a.date_applied, a.status,
           a.ats_score, a.hm_score, a.analysis, a.interview_prep, a.notes, a.created_at,
           t.name AS track_name, t.display_name AS track_display_name
         FROM applications a
         JOIN position_tracks t ON t.id = a.track_id
+        WHERE a.user_id = ?
     """
-    params: tuple[Any, ...] = ()
+    params: tuple[Any, ...] = (user_id,)
     if track_id is not None:
-        query += " WHERE a.track_id = ?"
-        params = (track_id,)
+        query += " AND a.track_id = ?"
+        params = (user_id, track_id)
     query += " ORDER BY a.created_at DESC, a.id DESC"
     with get_connection() as connection:
         rows = connection.execute(query, params).fetchall()
     return [_job_from_row(row) for row in rows]
 
 
-def get_job(job_id: int) -> JobWithTrack | None:
+def get_job(job_id: int, *, user_id: int | None = None) -> JobWithTrack | None:
     """Return a single application with joined track fields."""
+    where = "WHERE a.id = ?"
+    params: tuple[Any, ...] = (job_id,)
+    if user_id is not None:
+        where += " AND a.user_id = ?"
+        params = (job_id, user_id)
     with get_connection() as connection:
         row = connection.execute(
             """
             SELECT
-              a.id, a.track_id, a.company, a.role, a.job_post, a.date_applied, a.status,
+              a.id, a.user_id, a.track_id, a.company, a.role, a.job_post, a.date_applied, a.status,
               a.ats_score, a.hm_score, a.analysis, a.interview_prep, a.notes, a.created_at,
               t.name AS track_name, t.display_name AS track_display_name
             FROM applications a
             JOIN position_tracks t ON t.id = a.track_id
-            WHERE a.id = ?
-            """,
-            (job_id,),
+            """ + where,
+            params,
         ).fetchone()
     return _job_from_row(row) if row else None
 
 
-def update_job(job_id: int, *, status: str | None = None, notes: str | None = None) -> JobWithTrack | None:
+def update_job(job_id: int, *, user_id: int, status: str | None = None, notes: str | None = None) -> JobWithTrack | None:
     """Patch mutable application fields."""
     fields: list[str] = []
     values: list[Any] = []
@@ -259,33 +336,38 @@ def update_job(job_id: int, *, status: str | None = None, notes: str | None = No
         fields.append("notes = ?")
         values.append(notes)
     if not fields:
-        return get_job(job_id)
-    values.append(job_id)
+        return get_job(job_id, user_id=user_id)
+    values.extend([job_id, user_id])
     with get_connection() as connection:
-        connection.execute(f"UPDATE applications SET {', '.join(fields)} WHERE id = ?", tuple(values))
-    return get_job(job_id)
+        connection.execute(f"UPDATE applications SET {', '.join(fields)} WHERE id = ? AND user_id = ?", tuple(values))
+    return get_job(job_id, user_id=user_id)
 
 
-def create_jordan_session(mode: str, context_id: int, transcript: list[dict[str, Any]]) -> JordanSession:
+def create_jordan_session(mode: str, context_id: int, transcript: list[dict[str, Any]], *, user_id: int) -> JordanSession:
     """Persist a Jordan session and return it."""
     with get_connection() as connection:
         cursor = connection.execute(
-            "INSERT INTO jordan_sessions (mode, context_id, transcript) VALUES (?, ?, ?)",
-            (mode, context_id, json.dumps(transcript)),
+            "INSERT INTO jordan_sessions (user_id, mode, context_id, transcript) VALUES (?, ?, ?, ?)",
+            (user_id, mode, context_id, json.dumps(transcript)),
         )
         session_id = int(cursor.lastrowid)
-    session = get_jordan_session(session_id)
+    session = get_jordan_session(session_id, user_id=user_id)
     if session is None:
         raise RuntimeError("Failed to load Jordan session")
     return session
 
 
-def get_jordan_session(session_id: int) -> JordanSession | None:
+def get_jordan_session(session_id: int, *, user_id: int | None = None) -> JordanSession | None:
     """Return one Jordan session."""
+    where = "WHERE id = ?"
+    params: tuple[Any, ...] = (session_id,)
+    if user_id is not None:
+        where += " AND user_id = ?"
+        params = (session_id, user_id)
     with get_connection() as connection:
         row = connection.execute(
-            "SELECT id, mode, context_id, transcript, created_at FROM jordan_sessions WHERE id = ?",
-            (session_id,),
+            f"SELECT id, user_id, mode, context_id, transcript, created_at FROM jordan_sessions {where}",
+            params,
         ).fetchone()
     if row is None:
         return None

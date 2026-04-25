@@ -155,10 +155,10 @@ TRACK_FOCUS = {
 }
 
 
-def build_context(mode: str, context_id: int) -> tuple[str, str]:
+def build_context(mode: str, context_id: int, *, user_id: int) -> tuple[str, str]:
     """Returns (context_summary, resume_text)."""
     if mode == "job":
-        job = database.get_job(context_id)
+        job = database.get_job(context_id, user_id=user_id)
         if job is None:
             raise ValueError("Job not found")
         gap_text = ", ".join(job.analysis.gaps_to_address[:3]) if job.analysis else ""
@@ -166,7 +166,8 @@ def build_context(mode: str, context_id: int) -> tuple[str, str]:
         company_values = job.analysis.company_values if job.analysis else []
         interview_style = job.analysis.interview_style if job.analysis else ""
         track = database.get_track(job.track_id) if job.track_id else None
-        resume = track.base_resume if track else ""
+        user = database.get_user_by_id(user_id)
+        resume = user.resume if user and user.resume else (track.base_resume if track else "")
         track_focus = TRACK_FOCUS.get(track.name, "") if track else ""
         talking_points = job.analysis.talking_points if job.analysis else []
         key_requirements = job.analysis.key_requirements if job.analysis else []
@@ -216,7 +217,8 @@ def build_context(mode: str, context_id: int) -> tuple[str, str]:
         raise ValueError("Track not found")
     track_focus = TRACK_FOCUS.get(track.name, f"Prep for {track.display_name} roles.")
     summary = f"Track prep: {track.display_name}. {track_focus}"
-    return summary, track.base_resume
+    user = database.get_user_by_id(user_id)
+    return summary, (user.resume if user and user.resume else track.base_resume)
 
 
 def _call_claude_coaching(transcript: list[dict], context_summary: str, resume: str, session_complete: bool, exchange_count: int = 0, fit_level: str = "good", company_type: str = "other") -> tuple[str, str]:
@@ -552,9 +554,9 @@ def _build_profile_update(
         return {"readiness_score": 5.0, "known_strengths": [], "known_weaknesses": [], "patterns": []}
 
 
-def _get_track_key(mode: str, context_id: int) -> str:
+def make_track_key(*, user_id: int, mode: str, context_id: int) -> str:
     """Return a stable string key for the candidate profile."""
-    return f"{mode}:{context_id}"
+    return f"user:{user_id}:{mode}:{context_id}"
 
 
 def _build_summary(transcript: list[dict], context_summary: str, resume: str = "") -> str:
@@ -582,9 +584,9 @@ def _build_summary(transcript: list[dict], context_summary: str, resume: str = "
         return "Session complete. Focus on adding specific metrics and examples to your answers."
 
 
-async def start_session(mode: str, context_id: int) -> JordanStartResponse:
-    context_summary, resume = build_context(mode=mode, context_id=context_id)
-    track_key = _get_track_key(mode, context_id)
+async def start_session(*, mode: str, context_id: int, user_id: int) -> JordanStartResponse:
+    context_summary, resume = build_context(mode=mode, context_id=context_id, user_id=user_id)
+    track_key = make_track_key(user_id=user_id, mode=mode, context_id=context_id)
     prior_profile = database.get_candidate_profile(track_key)
 
     # Assess how well the candidate fits this role
@@ -611,7 +613,7 @@ async def start_session(mode: str, context_id: int) -> JordanStartResponse:
         opening_question = _build_opening_question(context_summary=context_summary, resume=resume, fit_level=fit_level)
 
     transcript = [{"speaker": "jordan", "text": opening_question, "fit_level": fit_level, "company_type": company_type}]
-    session = database.create_jordan_session(mode=mode, context_id=context_id, transcript=transcript)
+    session = database.create_jordan_session(mode=mode, context_id=context_id, transcript=transcript, user_id=user_id)
 
     return JordanStartResponse(
         session_id=session.id,
@@ -628,8 +630,8 @@ async def start_session(mode: str, context_id: int) -> JordanStartResponse:
     )
 
 
-async def respond(session_id: int, answer: str) -> JordanRespondResponse:
-    session = database.get_jordan_session(session_id)
+async def respond(*, session_id: int, answer: str, user_id: int) -> JordanRespondResponse:
+    session = database.get_jordan_session(session_id, user_id=user_id)
     if session is None:
         raise ValueError("Session not found")
 
@@ -640,7 +642,7 @@ async def respond(session_id: int, answer: str) -> JordanRespondResponse:
     session_complete = exchange_count >= MIN_EXCHANGES
 
     # Get context from session
-    context_summary, resume = build_context(mode=session.mode, context_id=session.context_id)
+    context_summary, resume = build_context(mode=session.mode, context_id=session.context_id, user_id=user_id)
     fit_level = session.transcript[0].get("fit_level", "good") if session.transcript else "good"
     company_type = session.transcript[0].get("company_type", "other") if session.transcript else "other"
 
@@ -667,7 +669,7 @@ async def respond(session_id: int, answer: str) -> JordanRespondResponse:
     if session_complete:
         summary = _build_summary(transcript=transcript, context_summary=context_summary, resume=resume)
         # Update candidate profile
-        track_key = _get_track_key(session.mode, session.context_id)
+        track_key = make_track_key(user_id=user_id, mode=session.mode, context_id=session.context_id)
         prior_profile = database.get_candidate_profile(track_key)
         profile_data = _build_profile_update(
             transcript=transcript,

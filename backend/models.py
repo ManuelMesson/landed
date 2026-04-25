@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field
 
 
 class PositionTrack(BaseModel):
@@ -31,11 +31,12 @@ class AnalysisResult(BaseModel):
 
 class AnalyzeRequest(BaseModel):
     job_post: str
-    resume: str
+    resume: str | None = None
     track_id: int
 
 
 class JobCreate(BaseModel):
+    user_id: int | None = None
     track_id: int
     company: str
     role: str
@@ -55,6 +56,7 @@ class JobUpdate(BaseModel):
 
 class JobRecord(BaseModel):
     id: int
+    user_id: int | None = None
     track_id: int
     company: str
     role: str
@@ -126,6 +128,7 @@ class CandidateProfile(BaseModel):
 
 class JordanSession(BaseModel):
     id: int
+    user_id: int | None = None
     mode: str
     context_id: int
     transcript: list[dict[str, Any]]
@@ -135,3 +138,39 @@ class JordanSession(BaseModel):
 class HealthResponse(BaseModel):
     status: str = "ok"
     timestamp: datetime = Field(default_factory=datetime.utcnow)
+
+
+class AuthRegisterRequest(BaseModel):
+    email: EmailStr
+    password: str = Field(min_length=8)
+
+
+class AuthLoginRequest(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class ResumeUpdateRequest(BaseModel):
+    resume: str
+
+
+class UserRecord(BaseModel):
+    id: int
+    email: EmailStr
+    password_hash: str
+    resume: str = ""
+    created_at: str
+
+
+class UserResponse(BaseModel):
+    id: int
+    email: EmailStr
+    resume: str = ""
+    has_resume: bool = False
+    created_at: str
+
+
+class AuthTokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    user: UserResponse
