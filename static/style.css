@@ -267,6 +267,83 @@ body {
   gap: 24px;
 }
 
+/* ── Jordan persistent guide (analyzer page) ── */
+
+.jordan-guide {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  padding: 16px 20px;
+  background: rgba(124,58,237,0.06);
+  border: 1px solid rgba(124,58,237,0.18);
+  border-radius: 20px;
+  transition: background 300ms, border-color 300ms;
+}
+
+.jordan-guide-avatar {
+  position: relative;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.jordan-guide-ring {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 18px rgba(124,58,237,0.4);
+}
+
+.jordan-guide-letter {
+  font-size: 1rem;
+  font-weight: 900;
+  color: #fff;
+}
+
+.jordan-guide-pulse {
+  position: absolute;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  border: 2px solid rgba(124,58,237,0.2);
+  animation: pulse-ring 2s ease-out infinite;
+}
+
+.jordan-guide-content {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+}
+
+.jordan-guide-name {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: #a78bfa;
+}
+
+.jordan-guide-message {
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: #ddd8f7;
+  margin: 0;
+  transition: opacity 300ms;
+}
+
+.jordan-cta-pill {
+  background: linear-gradient(135deg, rgba(124,58,237,0.3), rgba(37,99,235,0.25)) !important;
+  border-color: rgba(124,58,237,0.4) !important;
+  color: #c4b5fd !important;
+  font-style: italic;
+}
+
 /* ── Analyzer hero ── */
 
 .analyzer-hero {

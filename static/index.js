@@ -113,6 +113,12 @@ function renderAnalysis(payload) {
   showStage("stage-score");
   showStage("stage-analysis");
 
+  // Jordan updates her message after analysis
+  const guideMsg = document.getElementById("jordan-guide-message");
+  if (guideMsg) {
+    guideMsg.textContent = "Your scores are in. I've studied this role — ready to prep when you are.";
+  }
+
   const atsScoreEl = document.querySelector("#ats-score");
   const hmScoreEl  = document.querySelector("#hm-score");
   const atsMeter   = document.querySelector("#ats-meter");

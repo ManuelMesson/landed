@@ -55,14 +55,25 @@
       <section class="analyzer-hero reveal">
         <p class="analyzer-kicker">AI Job Analyzer</p>
         <h1 class="analyzer-headline">Know where you stand.<br>Before they do.</h1>
-        <p class="analyzer-tagline">Paste any job post. Get your fit score, resume fixes, and a Jordan prep session — in seconds.</p>
       </section>
+
+      <!-- ── Jordan persistent guide ── -->
+      <div id="jordan-guide" class="jordan-guide reveal">
+        <div class="jordan-guide-avatar">
+          <div class="jordan-guide-ring"><span class="jordan-guide-letter">J</span></div>
+          <div class="jordan-guide-pulse"></div>
+        </div>
+        <div class="jordan-guide-content">
+          <span class="jordan-guide-name">Jordan</span>
+          <p id="jordan-guide-message" class="jordan-guide-message">Paste the job post you're targeting. I'll score it against your resume.</p>
+        </div>
+      </div>
 
       <!-- ── STEP 1: Paste a job post ── -->
       <section id="stage-input" class="stage stage-active">
         <div class="input-panel">
           <textarea id="job-post" class="job-textarea" placeholder="Paste the full job post here — analysis starts automatically…"></textarea>
-          <p class="input-hint">AI analysis kicks off as you paste — no button needed.</p>
+          <p class="input-hint">Analysis kicks off as you paste — no button needed.</p>
         </div>
         <div id="analysis-loading" class="skeleton-row hidden">
           <div class="skeleton-card"></div>
@@ -115,7 +126,9 @@
           <button id="save-pipeline-btn" class="action-pill action-secondary" type="button">
             Save to Pipeline
           </button>
-          <a id="jordan-link" href="/jordan" class="action-pill action-primary">Prep with Jordan →</a>
+          <a id="jordan-link" href="/jordan" class="action-pill action-primary jordan-cta-pill">
+            Jordan is ready → prep now
+          </a>
         </div>
       </section>
 
