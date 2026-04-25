@@ -1,16 +1,19 @@
 from __future__ import annotations
 
 import logging
+import os
 import sqlite3
 from contextlib import asynccontextmanager
 from pathlib import Path
 
 from dotenv import load_dotenv
-from fastapi import Depends, FastAPI, HTTPException, Query, status
+from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import FileResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.base import BaseHTTPMiddleware
 
 import auth
 import database
@@ -53,6 +56,43 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(title="Landed", lifespan=lifespan)
+
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; "
+            "script-src 'self'; "
+            "style-src 'self' https://fonts.googleapis.com; "
+            "font-src 'self' https://fonts.gstatic.com; "
+            "img-src 'self' data:; "
+            "connect-src 'self'; "
+            "media-src 'self' blob:; "
+            "frame-ancestors 'none';"
+        )
+        return response
+
+
+def _trusted_hosts() -> list[str]:
+    """Return the allowed hostnames for TrustedHostMiddleware."""
+    configured = os.getenv("ALLOWED_HOSTS", "").strip()
+    if configured:
+        return [host.strip() for host in configured.split(",") if host.strip()]
+    hosts = {"localhost", "127.0.0.1", "testserver"}
+    render_hostname = os.getenv("RENDER_EXTERNAL_HOSTNAME", "").strip()
+    if render_hostname:
+        hosts.add(render_hostname)
+    return sorted(hosts)
+
+
+app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=_trusted_hosts())
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -63,31 +103,44 @@ app.add_middleware(
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
 
 
+def _fallback_display_name(email: str) -> str:
+    """Build a basic first-name fallback from the email local part."""
+    local_part = email.split("@", 1)[0]
+    first_chunk = local_part.split(".", 1)[0]
+    return first_chunk.capitalize()
+
+
 def _serialize_user(user: UserRecord) -> UserResponse:
     """Return the public user payload."""
     return UserResponse(
         id=user.id,
         email=user.email,
+        display_name=user.display_name or _fallback_display_name(str(user.email)),
         resume=user.resume or "",
         has_resume=bool((user.resume or "").strip()),
         created_at=user.created_at,
     )
 
 
-def _token_response(user: UserRecord) -> AuthTokenResponse:
+def _token_response(user: UserRecord, response: Response) -> AuthTokenResponse:
     """Create the standard auth response payload."""
     token = auth.create_access_token(subject=user.email, user_id=user.id)
+    auth.set_auth_cookie(response, token)
     return AuthTokenResponse(access_token=token, user=_serialize_user(user))
 
 
 def get_optional_current_user(
+    request: Request,
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
 ) -> UserRecord | None:
-    """Return the current user if a valid bearer token is present."""
-    if credentials is None:
+    """Return the current user if a valid cookie or bearer token is present."""
+    token = request.cookies.get(auth.COOKIE_NAME)
+    if not token and credentials is not None:
+        token = credentials.credentials
+    if not token:
         return None
     try:
-        payload = auth.decode_access_token(credentials.credentials)
+        payload = auth.decode_access_token(token)
         user_id = int(payload.get("user_id"))
     except RuntimeError as exc:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)) from exc
@@ -115,13 +168,13 @@ async def health() -> HealthResponse:
 
 
 @app.post("/analyze")
-async def analyze(request: AnalyzeRequest, current_user: UserRecord | None = Depends(get_optional_current_user)) -> dict:
+async def analyze(request: AnalyzeRequest, current_user: UserRecord = Depends(get_current_user)) -> dict:
     """Analyze a pasted job post against the current resume text."""
     track = database.get_track(request.track_id)
     if track is None:
         raise HTTPException(status_code=404, detail="Track not found")
     resume = (request.resume or "").strip()
-    if not resume and current_user is not None:
+    if not resume:
         resume = (current_user.resume or "").strip()
     if not resume:
         raise HTTPException(status_code=422, detail="resume required")
@@ -134,27 +187,36 @@ async def analyze(request: AnalyzeRequest, current_user: UserRecord | None = Dep
 
 
 @app.post("/auth/register", response_model=AuthTokenResponse, status_code=201)
-async def register(request: AuthRegisterRequest) -> AuthTokenResponse:
-    """Register a new user and return a bearer token."""
+async def register(request: AuthRegisterRequest, response: Response) -> AuthTokenResponse:
+    """Register a new user and return an auth token while setting the session cookie."""
     if database.get_user_by_email(str(request.email)):
         raise HTTPException(status_code=409, detail="Email already registered")
+    display_name = request.name or _fallback_display_name(str(request.email))
     try:
         user = database.create_user(
             email=str(request.email),
             password_hash=auth.get_password_hash(request.password),
+            display_name=display_name,
         )
     except sqlite3.IntegrityError as exc:
         raise HTTPException(status_code=409, detail="Email already registered") from exc
-    return _token_response(user)
+    return _token_response(user, response)
 
 
 @app.post("/auth/login", response_model=AuthTokenResponse)
-async def login(request: AuthLoginRequest) -> AuthTokenResponse:
-    """Authenticate a user and return a bearer token."""
+async def login(request: AuthLoginRequest, response: Response) -> AuthTokenResponse:
+    """Authenticate a user and return an auth token while setting the session cookie."""
     user = database.get_user_by_email(str(request.email))
     if user is None or not auth.verify_password(request.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid email or password")
-    return _token_response(user)
+    return _token_response(user, response)
+
+
+@app.post("/auth/logout")
+async def logout(response: Response) -> dict[str, str]:
+    """Clear the auth cookie for the current browser session."""
+    auth.clear_auth_cookie(response)
+    return {"status": "logged out"}
 
 
 @app.get("/auth/me", response_model=UserResponse)

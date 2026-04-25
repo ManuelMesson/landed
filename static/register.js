@@ -1,3 +1,5 @@
+// Uses auth.js globals directly: fetchCurrentUser, setSessionFlag
+
 const registerForm = document.querySelector("#auth-form");
 const registerError = document.querySelector("#auth-error");
 
@@ -15,6 +17,7 @@ registerForm?.addEventListener("submit", async (event) => {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
+      name: form.get("name"),
       email: form.get("email"),
       password: form.get("password"),
     }),
@@ -26,7 +29,10 @@ registerForm?.addEventListener("submit", async (event) => {
     return;
   }
 
-  window.LandedAuth.setToken(payload.access_token);
+  setToken(payload.access_token);
+  try {
+    await fetchCurrentUser();
+  } catch (_) {}
   const next = new URLSearchParams(window.location.search).get("next") || "/";
   window.location.href = next;
 });

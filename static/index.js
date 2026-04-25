@@ -1,4 +1,4 @@
-const { RESUME_KEY, fetchCurrentUser, fetchJson, getToken, isLoggedIn, redirectToLogin, renderAuthNav } = window.LandedAuth;
+// Uses auth.js globals directly (loaded first via defer): RESUME_KEY, fetchCurrentUser, fetchJson, isLoggedIn, redirectToLogin, renderAuthNav
 
 const state = {
   currentAnalysis: null,
@@ -171,6 +171,10 @@ const analyzeButton = document.querySelector("#analyze-button");
 async function runAnalysis() {
   const jobText = jobPost?.value.trim();
   if (!jobText) return;
+  if (!isLoggedIn()) {
+    redirectToLogin();
+    return;
+  }
 
   const resume = getUserResume();
   if (!resume) {
@@ -189,6 +193,10 @@ async function runAnalysis() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ job_post: jobText, resume, track_id: 1 }),
     });
+    if (response.status === 401) {
+      redirectToLogin();
+      return;
+    }
     if (!response.ok) {
       throw new Error("analysis failed");
     }
@@ -236,7 +244,7 @@ async function saveToPipeline() {
     showToast("Already saved ✓");
     return;
   }
-  if (!getToken()) {
+  if (!isLoggedIn()) {
     redirectToLogin();
     return;
   }
@@ -284,7 +292,7 @@ document.querySelector("#save-pipeline-btn")?.addEventListener("click", saveToPi
 // ── Jordan link: save first if not yet saved ──
 document.querySelector("#jordan-link")?.addEventListener("click", async (e) => {
   if (!state.currentAnalysis) return; // let default navigation happen
-  if (!getToken()) {
+  if (!isLoggedIn()) {
     e.preventDefault();
     redirectToLogin();
     return;
@@ -309,11 +317,6 @@ async function bootstrap() {
   }
 
   renderAuthNav(currentUser);
-
-  if (!isLoggedIn() && !getUserResume()) {
-    redirectToLogin();
-    return;
-  }
 
   initOnboarding();
 }

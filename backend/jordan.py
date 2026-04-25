@@ -156,8 +156,12 @@ TRACK_FOCUS = {
 
 
 def _user_first_name(user: "database.UserRecord | None") -> str:
-    """Extract first name from email for personal greeting."""
-    if not user or not user.email:
+    """Return the preferred name for personal greeting."""
+    if not user:
+        return ""
+    if user.display_name:
+        return user.display_name
+    if not user.email:
         return ""
     local = user.email.split("@")[0].split(".")[0]
     return local.capitalize()
@@ -601,6 +605,7 @@ async def start_session(*, mode: str, context_id: int, user_id: int) -> JordanSt
     context_summary, resume = build_context(mode=mode, context_id=context_id, user_id=user_id)
     track_key = make_track_key(user_id=user_id, mode=mode, context_id=context_id)
     prior_profile = database.get_candidate_profile(track_key)
+    user = database.get_user_by_id(user_id)
 
     # Assess how well the candidate fits this role
     fit_level, company_type = _assess_fit(context_summary=context_summary, resume=resume)
@@ -633,6 +638,7 @@ async def start_session(*, mode: str, context_id: int, user_id: int) -> JordanSt
         question_text=opening_question,
         audio_url=await synthesize_audio(opening_question),
         prefetched_audio_urls=[],
+        display_name=_user_first_name(user),
         warmup_text=warmup_text,
         context_summary=context_summary,
         readiness_score=prior_profile.readiness_score if prior_profile else 0,

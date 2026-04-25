@@ -85,6 +85,7 @@ def init_db() -> None:
               id INTEGER PRIMARY KEY AUTOINCREMENT,
               email TEXT UNIQUE NOT NULL,
               password_hash TEXT NOT NULL,
+              display_name TEXT DEFAULT '',
               resume TEXT DEFAULT '',
               created_at TEXT DEFAULT (datetime('now'))
             );
@@ -136,6 +137,11 @@ def init_db() -> None:
             );
             """
         )
+        try:
+            connection.execute("ALTER TABLE users ADD COLUMN display_name TEXT DEFAULT ''")
+        except sqlite3.OperationalError as exc:
+            if "duplicate column name" not in str(exc).lower():
+                raise
         _ensure_column(connection, table="applications", column="user_id", ddl="INTEGER REFERENCES users(id)")
         _ensure_column(connection, table="jordan_sessions", column="user_id", ddl="INTEGER REFERENCES users(id)")
         count = connection.execute("SELECT COUNT(*) FROM position_tracks").fetchone()[0]
@@ -198,12 +204,12 @@ def update_track_resume(track_id: int, resume: str) -> PositionTrack | None:
     return get_track(track_id)
 
 
-def create_user(email: str, password_hash: str) -> UserRecord:
+def create_user(email: str, password_hash: str, *, display_name: str = "") -> UserRecord:
     """Create a user account."""
     with get_connection() as connection:
         cursor = connection.execute(
-            "INSERT INTO users (email, password_hash) VALUES (?, ?)",
-            (email.lower(), password_hash),
+            "INSERT INTO users (email, password_hash, display_name) VALUES (?, ?, ?)",
+            (email.lower(), password_hash, display_name),
         )
         user_id = int(cursor.lastrowid)
     user = get_user_by_id(user_id)
@@ -216,7 +222,7 @@ def get_user_by_email(email: str) -> UserRecord | None:
     """Return a user by email."""
     with get_connection() as connection:
         row = connection.execute(
-            "SELECT id, email, password_hash, resume, created_at FROM users WHERE email = ?",
+            "SELECT id, email, password_hash, display_name, resume, created_at FROM users WHERE email = ?",
             (email.lower(),),
         ).fetchone()
     return _user_from_row(row) if row else None
@@ -226,7 +232,7 @@ def get_user_by_id(user_id: int) -> UserRecord | None:
     """Return a user by id."""
     with get_connection() as connection:
         row = connection.execute(
-            "SELECT id, email, password_hash, resume, created_at FROM users WHERE id = ?",
+            "SELECT id, email, password_hash, display_name, resume, created_at FROM users WHERE id = ?",
             (user_id,),
         ).fetchone()
     return _user_from_row(row) if row else None

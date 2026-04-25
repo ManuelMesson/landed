@@ -1,3 +1,5 @@
+// Uses auth.js globals directly: TOKEN_KEY, RESUME_KEY, setToken, fetchCurrentUser
+
 const loginForm = document.querySelector("#auth-form");
 const loginError = document.querySelector("#auth-error");
 
@@ -26,13 +28,13 @@ loginForm?.addEventListener("submit", async (event) => {
     return;
   }
 
-  window.LandedAuth.setToken(payload.access_token);
+  setToken(payload.access_token);
   if (payload.user?.resume) {
-    localStorage.setItem(window.LandedAuth.RESUME_KEY, payload.user.resume);
+    localStorage.setItem(RESUME_KEY, payload.user.resume);
   }
 
   try {
-    await window.LandedAuth.fetchCurrentUser();
+    await fetchCurrentUser();
   } catch (_) {}
 
   const next = new URLSearchParams(window.location.search).get("next") || "/";

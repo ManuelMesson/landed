@@ -4,123 +4,117 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Prep with Jordan</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css" />
-    <link rel="stylesheet" href="/static/jordan-ui.css" />
     <script defer src="/static/auth.js"></script>
     <script defer src="/static/jordan.js"></script>
   </head>
   <body data-page="jordan">
+    <div class="jordan-shell">
+      <header class="jordan-session-bar">
+        <div class="jordan-session-bar-group">
+          <span id="session-type-bar" class="session-type-badge session-type-loading">Loading session</span>
+        </div>
+        <div class="jordan-session-bar-group jordan-session-bar-meta">
+          <span id="session-status-text" class="session-status-text">Preparing Jordan</span>
+          <span id="session-timer" class="session-timer" aria-live="off">Timer off</span>
+          <div data-auth-slot></div>
+        </div>
+      </header>
 
-    <!-- ── Top bar ── -->
-    <header class="top-bar">
-      <span class="wordmark">Landed</span>
-      <div class="top-bar-right">
-        <a href="/" class="nav-pill">Analyzer</a>
-        <a href="/tracker" class="nav-pill">Pipeline →</a>
-        <div data-auth-slot></div>
-      </div>
-    </header>
-
-    <main class="jordan-main">
-
+      <main class="jordan-main">
       <!-- ── PHASE 1: Warmup ── -->
-      <section id="phase-warmup" class="jordan-phase">
-        <div class="jordan-avatar">
-          <div class="avatar-ring">
-            <span class="avatar-letter">J</span>
+      <section id="phase-warmup" class="jordan-phase jordan-warmup-phase">
+        <div class="jordan-phase-shell jordan-warmup-shell">
+          <div class="jordan-phase-header warmup-header">
+            <span id="warmup-session-badge" class="session-type-badge session-type-loading">Loading session</span>
+            <span id="warmup-returning-note" class="jordan-phase-meta">Jordan is getting the room ready.</span>
           </div>
-          <div class="avatar-pulse"></div>
-        </div>
-        <h1 class="jordan-name">Jordan</h1>
-        <p class="jordan-tagline">Your interview coach. Warm, direct, no weak answers allowed.</p>
-        <div id="warmup-card" class="warmup-card">
-          <div class="warmup-loading">
-            <div class="skeleton-card" style="height:18px;margin-bottom:10px"></div>
-            <div class="skeleton-card" style="height:18px;width:80%"></div>
+          <div class="warmup-intro">
+            <p class="warmup-kicker">Jordan session</p>
+            <h1 class="jordan-name">Jordan</h1>
+            <p class="jordan-tagline">Your interview coach. Warm, direct, no weak answers allowed.</p>
           </div>
+          <div id="warmup-card" class="warmup-card session-panel">
+            <div class="warmup-loading">
+              <div class="skeleton-card skeleton-line skeleton-line-lg"></div>
+              <div class="skeleton-card skeleton-line skeleton-line-80"></div>
+            </div>
+          </div>
+          <button id="start-button" class="cta-button jordan-start-button" type="button" disabled>
+            <span class="btn-label">Loading...</span>
+            <span class="btn-spinner hidden"></span>
+          </button>
         </div>
-        <button id="start-button" class="cta-button" type="button" disabled>
-          <span class="btn-label">Loading...</span>
-          <span class="btn-spinner hidden"></span>
-        </button>
       </section>
 
       <!-- ── PHASE 2: Session ── -->
-      <section id="phase-session" class="jordan-phase hidden">
-
-        <!-- Jordan's current message -->
-        <div class="jordan-bubble-wrap">
-          <div class="jordan-avatar-sm">
-            <span>J</span>
-          </div>
-          <div class="bubble-col">
-            <span class="bubble-name">Jordan</span>
-            <div id="coaching-bubble" class="bubble jordan-coaching hidden"></div>
-            <div id="question-bubble" class="bubble jordan-question">
-              <span id="current-question">Loading...</span>
+      <section id="phase-session" class="jordan-phase jordan-session-phase hidden">
+        <div class="session-stage">
+          <div class="session-prompt">
+            <div id="question-bubble" class="jordan-question-panel">
+              <p id="current-question" class="jordan-question-text">Loading...</p>
             </div>
-            <div id="jordan-thinking" class="bubble jordan-thinking hidden">
-              <span class="thinking-dot"></span>
-              <span class="thinking-dot"></span>
-              <span class="thinking-dot"></span>
+            <div id="jordan-thinking" class="jordan-thinking hidden" aria-live="polite">
+              <span>Jordan is thinking</span>
+              <span class="thinking-ellipsis" aria-hidden="true"></span>
             </div>
+            <div id="coaching-bubble" class="jordan-coaching hidden"></div>
           </div>
         </div>
-
-        <!-- User answers -->
-        <div id="user-messages" class="user-messages"></div>
 
         <!-- Audio (hidden) -->
-        <audio id="jordan-audio" preload="auto" style="display:none"></audio>
+        <audio id="jordan-audio" preload="auto" class="hidden-audio"></audio>
 
         <!-- Input zone -->
-        <div id="input-zone" class="input-zone">
-          <div class="mic-zone">
-            <button id="mic-button" class="big-mic-button" type="button">
-              <svg class="mic-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                <line x1="12" y1="19" x2="12" y2="23"/>
-                <line x1="8" y1="23" x2="16" y2="23"/>
-              </svg>
-              <span class="mic-label">Hold to speak</span>
-            </button>
+        <div class="session-composer">
+          <div id="input-zone" class="input-zone">
+            <label class="answer-label" for="answer-text">Your answer</label>
+            <textarea id="answer-text" class="answer-input" rows="4" placeholder="Speak directly. Use specifics."></textarea>
+            <div class="input-actions">
+              <button id="mic-button" class="big-mic-button" type="button">
+                <svg class="mic-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                  <line x1="12" y1="19" x2="12" y2="23"/>
+                  <line x1="8" y1="23" x2="16" y2="23"/>
+                </svg>
+                <span class="mic-label">Hold to speak</span>
+              </button>
+              <button id="submit-answer" class="send-button" type="button">
+                <span>Send</span>
+                <span aria-hidden="true">→</span>
+              </button>
+            </div>
+            <button id="retry-button" class="retry-button hidden" type="button">Try that answer again</button>
           </div>
-          <div class="text-input-row">
-            <textarea id="answer-text" class="answer-input" rows="2" placeholder="Or type your answer here…"></textarea>
-            <button id="submit-answer" class="send-button" type="button">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18">
-                <line x1="22" y1="2" x2="11" y2="13"/>
-                <polygon points="22 2 15 22 11 13 2 9 22 2"/>
-              </svg>
-            </button>
-          </div>
-          <button id="retry-button" class="retry-button hidden" type="button">↩ Try that answer again</button>
         </div>
-
       </section>
 
       <!-- ── PHASE 3: Summary ── -->
-      <section id="phase-summary" class="jordan-phase hidden">
-        <div class="jordan-avatar">
-          <div class="avatar-ring avatar-ring-green">
-            <span class="avatar-letter">J</span>
+      <section id="phase-summary" class="jordan-phase jordan-summary-phase hidden">
+        <div class="jordan-phase-shell jordan-summary-shell">
+          <div class="jordan-phase-header summary-header">
+            <span id="summary-session-badge" class="session-type-badge session-type-loading">Loading session</span>
+            <span class="jordan-phase-meta">Jordan's notes from this round.</span>
           </div>
-        </div>
-        <h2 class="summary-title">Session complete.</h2>
-        <div id="summary-card" class="summary-card">
-          <div class="skeleton-card" style="height:16px;margin-bottom:8px"></div>
-          <div class="skeleton-card" style="height:16px;width:90%;margin-bottom:8px"></div>
-          <div class="skeleton-card" style="height:16px;width:70%"></div>
-        </div>
-        <div class="summary-actions">
-          <button id="restart-button" class="action-pill action-secondary" type="button">↩ Run it again</button>
-          <a href="/tracker" class="action-pill action-primary">Go to Pipeline →</a>
+          <div class="summary-intro">
+            <h2 class="summary-title">Session complete.</h2>
+            <p class="summary-subtitle">Keep the sharp parts. Fix the weak ones before the next round.</p>
+          </div>
+          <div id="summary-card" class="summary-card session-panel">
+            <div class="skeleton-card skeleton-line skeleton-line-md"></div>
+            <div class="skeleton-card skeleton-line skeleton-line-md skeleton-line-90"></div>
+            <div class="skeleton-card skeleton-line skeleton-line-md skeleton-line-70"></div>
+          </div>
+          <div class="summary-actions">
+            <button id="restart-button" class="action-pill action-primary" type="button">Prep again</button>
+            <a href="/tracker" class="action-pill action-secondary">Go to Pipeline →</a>
+          </div>
         </div>
       </section>
 
-    </main>
+      </main>
+    </div>
   </body>
 </html>

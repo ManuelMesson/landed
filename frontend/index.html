@@ -4,7 +4,6 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Landed</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css" />
     <script defer src="/static/auth.js"></script>
@@ -22,7 +21,7 @@
         <p class="onboarding-sub">Paste your resume once. Then paste any job post and get an instant fit score, resume suggestions, and interview prep with Jordan.</p>
         <label class="onboarding-label" for="onboarding-resume">Paste your resume</label>
         <textarea id="onboarding-resume" class="onboarding-textarea" placeholder="Copy and paste your full resume here — work experience, skills, education, projects..."></textarea>
-        <button id="onboarding-submit" class="cta-button" type="button" style="width:100%;justify-content:center">
+        <button id="onboarding-submit" class="cta-button onboarding-submit" type="button">
           Let's go →
         </button>
         <p class="onboarding-note">Your resume is saved locally. If you're signed in, we also save it to your account.</p>
@@ -39,6 +38,13 @@
     </header>
 
     <main class="flow-main">
+
+      <!-- ── Analyzer hero ── -->
+      <section class="analyzer-hero reveal">
+        <p class="analyzer-kicker">AI Job Analyzer</p>
+        <h1 class="analyzer-headline">Know where you stand.<br>Before they do.</h1>
+        <p class="analyzer-tagline">Paste any job post. Get your fit score, resume fixes, and a Jordan prep session — in seconds.</p>
+      </section>
 
       <!-- ── STEP 1: Paste a job post ── -->
       <section id="stage-input" class="stage stage-active">

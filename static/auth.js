@@ -10,9 +10,7 @@ function isLoggedIn() {
 }
 
 function setToken(token) {
-  if (token) {
-    localStorage.setItem(TOKEN_KEY, token);
-  }
+  if (token) localStorage.setItem(TOKEN_KEY, token);
 }
 
 function clearAuth() {
@@ -70,16 +68,15 @@ function renderAuthNav(user = null) {
   if (!slot) return;
 
   if (user) {
-    const localPart = user.email.split("@")[0];
-    const firstName = localPart.split(/[._\-0-9]/)[0];
-    const displayName = firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase();
+    const name = user.display_name || user.email.split("@")[0].replace(/[._\-0-9].*/, "");
+    const greeting = name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
     slot.innerHTML = `
-      <span class="auth-greeting">Hey, ${displayName}</span>
+      <span class="auth-greeting">Hey, ${greeting}</span>
       <a href="#" class="nav-pill nav-pill-logout" data-logout-link>Log out</a>
     `;
-    slot.querySelector("[data-logout-link]")?.addEventListener("click", (event) => {
+    slot.querySelector("[data-logout-link]")?.addEventListener("click", async (event) => {
       event.preventDefault();
-      clearAuth();
+      await clearAuth();
       window.location.href = "/login";
     });
     return;
@@ -89,6 +86,7 @@ function renderAuthNav(user = null) {
 }
 
 window.LandedAuth = {
+  TOKEN_KEY,
   RESUME_KEY,
   clearAuth,
   fetchCurrentUser,

@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 
 class PositionTrack(BaseModel):
@@ -91,6 +91,7 @@ class JordanStartResponse(BaseModel):
     question_text: str
     audio_url: str
     prefetched_audio_urls: list[str] = Field(default_factory=list)
+    display_name: str = ""
     warmup_text: str = ""
     context_summary: str = ""
     readiness_score: float = 0
@@ -143,6 +144,15 @@ class HealthResponse(BaseModel):
 class AuthRegisterRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8)
+    name: str | None = Field(default=None, max_length=50)
+
+    @field_validator("name")
+    @classmethod
+    def normalize_name(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        stripped = value.strip()
+        return stripped or None
 
 
 class AuthLoginRequest(BaseModel):
@@ -158,6 +168,7 @@ class UserRecord(BaseModel):
     id: int
     email: EmailStr
     password_hash: str
+    display_name: str = Field(default="", max_length=50)
     resume: str = ""
     created_at: str
 
@@ -165,6 +176,7 @@ class UserRecord(BaseModel):
 class UserResponse(BaseModel):
     id: int
     email: EmailStr
+    display_name: str = Field(default="", max_length=50)
     resume: str = ""
     has_resume: bool = False
     created_at: str

@@ -51,6 +51,16 @@ async def test_log_application_with_track(client) -> None:
 
 
 @pytest.mark.anyio
+async def test_security_headers_present(client) -> None:
+    response = await client.get("/health")
+
+    assert response.headers["x-content-type-options"] == "nosniff"
+    assert response.headers["x-frame-options"] == "DENY"
+    assert response.headers["referrer-policy"] == "strict-origin-when-cross-origin"
+    assert "default-src 'self'" in response.headers["content-security-policy"]
+
+
+@pytest.mark.anyio
 async def test_get_applications_by_track(client) -> None:
     headers = await _register_and_auth(client)
     await _create_job(client, headers)

@@ -1,4 +1,11 @@
-const { fetchCurrentUser, fetchJson, redirectToLogin, renderAuthNav, requireAuth } = window.LandedAuth;
+const {
+  fetchCurrentUser,
+  fetchJson,
+  redirectToLogin,
+  renderAuthNav,
+  requireAuth,
+} = window.LandedAuth;
+
 const trackSelectEl = document.querySelector("#tracker-track-select");
 const jobsBody     = document.querySelector("#jobs-body");
 const summaryEl    = document.querySelector("#tracker-summary");
