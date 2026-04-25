@@ -2012,6 +2012,104 @@ body[data-page="analyzer"] .top-bar {
   backdrop-filter: blur(24px);
 }
 
+/* ── Jordan on tracker/pipeline page ── */
+
+.jordan-pipeline-bar {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  padding: 16px 20px;
+  background: rgba(124,58,237,0.06);
+  border: 1px solid rgba(124,58,237,0.18);
+  border-radius: 20px;
+  margin-bottom: 16px;
+}
+
+.jordan-pipeline-avatar {
+  position: relative;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.jordan-pipeline-message {
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: #ddd8f7;
+  margin: 0;
+}
+
+/* ── Jordan on auth pages ── */
+
+.auth-jordan-intro {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  background: rgba(124,58,237,0.06);
+  border: 1px solid rgba(124,58,237,0.18);
+  border-radius: 18px;
+  padding: 16px 18px;
+  margin-bottom: 4px;
+}
+
+.auth-jordan-avatar {
+  position: relative;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 2px;
+}
+
+.auth-jordan-ring {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 16px rgba(124,58,237,0.4);
+}
+
+.auth-jordan-letter {
+  font-size: 0.9rem;
+  font-weight: 900;
+  color: #fff;
+}
+
+.auth-jordan-pulse {
+  position: absolute;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 2px solid rgba(124,58,237,0.2);
+  animation: pulse-ring 2s ease-out infinite;
+}
+
+.auth-jordan-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.auth-jordan-name {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: #a78bfa;
+}
+
+.auth-jordan-line {
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: #ddd8f7;
+  margin: 0;
+}
+
 /* ── Auth pages ── */
 
 .auth-shell {

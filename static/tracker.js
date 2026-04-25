@@ -77,6 +77,22 @@ async function renderJobs(jobs) {
   // Fetch Jordan profiles in parallel
   const profiles = await Promise.all(jobs.map(job => fetchProfile(job.id)));
 
+  // Jordan pipeline summary bar
+  const jordanMsg = document.getElementById("jordan-pipeline-message");
+  if (jordanMsg) {
+    const prepped = profiles.filter(p => p && p.session_count > 0).length;
+    const unprepped = jobs.length - prepped;
+    if (jobs.length === 0) {
+      jordanMsg.textContent = "No applications yet. Paste a job post on the analyzer and I'll score it for you.";
+    } else if (prepped === 0) {
+      jordanMsg.textContent = `You have ${jobs.length} application${jobs.length === 1 ? "" : "s"}. None prepped yet — pick one and let's get ready.`;
+    } else if (unprepped === 0) {
+      jordanMsg.textContent = `${prepped} of ${jobs.length} applications prepped. You're doing the work.`;
+    } else {
+      jordanMsg.textContent = `${prepped} of ${jobs.length} applications prepped. ${unprepped} still waiting — don't go in cold.`;
+    }
+  }
+
   jobs.forEach((job, i) => {
     const profile = profiles[i];
     const row = document.createElement("tr");
