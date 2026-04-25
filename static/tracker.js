@@ -15,10 +15,25 @@ function badge(status) {
   return `<span class="status-badge status-${status}">${status}</span>`;
 }
 
-function jordanBadge(sessionCount, readinessScore) {
-  if (!sessionCount) return `<span class="jordan-badge-none">No sessions</span>`;
+function jordanBadge(sessionCount, readinessScore, job) {
+  if (!sessionCount) {
+    const nudge = jordanRowNudge(job);
+    return `<div class="jordan-row-nudge">
+      <span class="jordan-nudge-line">${nudge}</span>
+      <a class="jordan-nudge-link" href="/jordan?mode=job&job_id=${job.id}">Prep this role →</a>
+    </div>`;
+  }
   const color = readinessScore >= 7 ? "jordan-badge-green" : readinessScore >= 5 ? "jordan-badge-yellow" : "jordan-badge-red";
   return `<span class="jordan-badge ${color}">${sessionCount} session${sessionCount > 1 ? "s" : ""} · ${readinessScore.toFixed(1)}/10</span>`;
+}
+
+function jordanRowNudge(job) {
+  const ats = job.ats_score || 0;
+  const company = job.company || "this role";
+  if (ats >= 75) return `Strong match at ${company}. Don't leave it on the table.`;
+  if (ats >= 55) return `Solid shot. I can close the gap before you walk in.`;
+  if (ats >= 35) return `Stretch role — I'll show you exactly how to pitch it.`;
+  return `This one needs prep. Let's build the angle together.`;
 }
 
 function detailCard(label, items, modifier = "") {
@@ -77,19 +92,38 @@ async function renderJobs(jobs) {
   // Fetch Jordan profiles in parallel
   const profiles = await Promise.all(jobs.map(job => fetchProfile(job.id)));
 
-  // Jordan pipeline summary bar
+  // Jordan pipeline summary — specific, not generic
   const jordanMsg = document.getElementById("jordan-pipeline-message");
   if (jordanMsg) {
     const prepped = profiles.filter(p => p && p.session_count > 0).length;
     const unprepped = jobs.length - prepped;
+    // Find highest-scoring unprepped job to call out by name
+    const unprepedJobs = jobs.filter((j, i) => !profiles[i] || !profiles[i].session_count);
+    const bestUnprepped = unprepedJobs.sort((a, b) => (b.ats_score || 0) - (a.ats_score || 0))[0];
+    // Find best prepped job score
+    const preppedScores = profiles.filter(p => p && p.session_count > 0).map(p => p.readiness_score || 0);
+    const bestReadiness = preppedScores.length ? Math.max(...preppedScores) : 0;
+
     if (jobs.length === 0) {
-      jordanMsg.textContent = "No applications yet. Paste a job post on the analyzer and I'll score it for you.";
+      jordanMsg.textContent = "Nothing here yet. Go to the analyzer, paste a job post — I'll score it and we start from there.";
     } else if (prepped === 0) {
-      jordanMsg.textContent = `You have ${jobs.length} application${jobs.length === 1 ? "" : "s"}. None prepped yet — pick one and let's get ready.`;
+      if (bestUnprepped && bestUnprepped.ats_score >= 60) {
+        jordanMsg.textContent = `${bestUnprepped.company} is your strongest match at ${bestUnprepped.ats_score}% — and you haven't prepped it yet. That's the one I'd start with.`;
+      } else {
+        jordanMsg.textContent = `${jobs.length} application${jobs.length === 1 ? "" : "s"} and none prepped. Pick your best shot — let's build your answers before they call.`;
+      }
     } else if (unprepped === 0) {
-      jordanMsg.textContent = `${prepped} of ${jobs.length} applications prepped. You're doing the work.`;
+      if (bestReadiness >= 8) {
+        jordanMsg.textContent = `All ${prepped} prepped. Your top readiness score is ${bestReadiness.toFixed(1)}/10. You're ready — now apply more.`;
+      } else {
+        jordanMsg.textContent = `All ${prepped} prepped. Run another session on the ones below 7 — that's where interviews get lost.`;
+      }
     } else {
-      jordanMsg.textContent = `${prepped} of ${jobs.length} applications prepped. ${unprepped} still waiting — don't go in cold.`;
+      if (bestUnprepped && bestUnprepped.ats_score >= 65) {
+        jordanMsg.textContent = `${prepped} of ${jobs.length} prepped. ${bestUnprepped.company} scores ${bestUnprepped.ats_score}% and hasn't been touched — that one should be next.`;
+      } else {
+        jordanMsg.textContent = `${prepped} of ${jobs.length} prepped. ${unprepped} application${unprepped === 1 ? "" : "s"} waiting — the interview could come any day.`;
+      }
     }
   }
 
@@ -104,7 +138,7 @@ async function renderJobs(jobs) {
       <td>${job.ats_score}%</td>
       <td>${job.hm_score}</td>
       <td>${badge(job.status)}</td>
-      <td>${jordanBadge(profile?.session_count || 0, profile?.readiness_score || 0)}</td>
+      <td>${jordanBadge(profile?.session_count || 0, profile?.readiness_score || 0, job)}</td>
       <td class="row-actions">
         <button class="secondary-button" type="button" data-action="toggle" data-id="${job.id}">Details</button>
       </td>

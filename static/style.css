@@ -2012,6 +2012,32 @@ body[data-page="analyzer"] .top-bar {
   backdrop-filter: blur(24px);
 }
 
+/* ── Jordan per-row nudge (tracker) ── */
+
+.jordan-row-nudge {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.jordan-nudge-line {
+  font-size: 0.8rem;
+  color: #c4b5fd;
+  line-height: 1.4;
+  font-style: italic;
+}
+
+.jordan-nudge-link {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #a78bfa;
+  text-decoration: none;
+  letter-spacing: 0.02em;
+  transition: color 160ms;
+}
+
+.jordan-nudge-link:hover { color: var(--text); }
+
 /* ── Jordan on tracker/pipeline page ── */
 
 .jordan-pipeline-bar {
