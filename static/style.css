@@ -2226,6 +2226,13 @@ body[data-page="analyzer"] .top-bar {
   text-decoration: none;
 }
 
+/* ── Tracker table scroll wrapper ── */
+.table-scroll-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 12px;
+}
+
 /* ── Responsive ── */
 
 @media (max-width: 640px) {
@@ -2233,13 +2240,18 @@ body[data-page="analyzer"] .top-bar {
   .flow-main { padding: 28px 16px 60px; }
   .score-hero { padding: 24px 20px; flex-direction: column; gap: 20px; }
   .score-divider { width: 60px; height: 1px; margin: 0; }
-  .action-strip { flex-direction: column; }
+  /* Safe area: bottom action buttons above iOS home indicator */
+  .action-strip { flex-direction: column; padding-bottom: max(16px, env(safe-area-inset-bottom)); }
+  .summary-actions { padding-bottom: max(16px, env(safe-area-inset-bottom)); }
+  .session-composer { padding-bottom: max(16px, env(safe-area-inset-bottom)); }
   .action-pill { justify-content: center; }
   .entry-grid { grid-template-columns: 1fr; }
   .analyzer-hero { padding: 28px 0 8px; }
   .analyzer-headline { font-size: 2rem; }
   .analyzer-tagline { display: none; }
   .toolbar, .form-row, .split-layout, .scores-grid, .jordan-layout { grid-template-columns: 1fr; }
+  /* Job textarea: less tall on small screens */
+  .job-textarea { min-height: 140px; }
   .jordan-session-bar {
     padding: 16px;
     align-items: flex-start;
@@ -2247,7 +2259,8 @@ body[data-page="analyzer"] .top-bar {
   }
   .jordan-session-bar-group,
   .jordan-session-bar-meta { width: 100%; justify-content: space-between; }
-  .jordan-phase { width: 100%; min-height: calc(100vh - 134px); }
+  /* Use dynamic viewport height — iOS Safari counts browser chrome in 100vh */
+  .jordan-phase { width: 100%; min-height: calc(100dvh - 134px); }
   .jordan-phase-shell { padding: 28px 16px 24px; gap: 24px; }
   .jordan-phase-header,
   .warmup-readiness-row,
@@ -2261,10 +2274,17 @@ body[data-page="analyzer"] .top-bar {
   .warmup-readiness-push { max-width: none; text-align: left; }
   .session-stage { padding: 32px 16px 12px; }
   .jordan-question-text { font-size: 1.45rem; line-height: 1.58; }
-  .session-composer { padding: 0 0 16px; }
   .input-zone { width: 100%; padding: 20px 16px 18px; }
   .answer-input { min-height: 120px; border-radius: 18px; }
   .send-button { min-width: 0; width: 100%; }
   .big-mic-button { width: 100%; }
   .session-status-text { display: none; }
+  /* Onboarding modal: scrollable with keyboard open */
+  .onboarding-overlay { align-items: flex-start; padding: 12px 16px; overflow-y: auto; }
+  .onboarding-card { padding: 28px 20px; border-radius: 24px; }
+  .onboarding-textarea { min-height: 120px; }
+  /* Tracker table */
+  .pipeline-table { min-width: 520px; font-size: 0.78rem; }
+  .pipeline-table th:nth-child(4),
+  .pipeline-table td:nth-child(4) { display: none; }
 }

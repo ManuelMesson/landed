@@ -47,6 +47,7 @@ async function fetchCurrentUser() {
   if (user.resume && user.resume.trim()) {
     localStorage.setItem(RESUME_KEY, user.resume);
   }
+  window.dispatchEvent(new CustomEvent("auth:ready", { detail: { user } }));
   return user;
 }
 

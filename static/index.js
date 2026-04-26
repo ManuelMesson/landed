@@ -312,6 +312,18 @@ document.querySelector("#jordan-link")?.addEventListener("click", async (e) => {
   }
 });
 
+function updateJordanGuideForUser(user) {
+  const guideMsg = document.getElementById("jordan-guide-message");
+  if (!guideMsg || !user) return;
+  const name = (user.display_name || user.email.split("@")[0]).split(" ")[0];
+  const firstName = name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
+  guideMsg.textContent = `${firstName}. What job are we working on today?`;
+}
+
+window.addEventListener("auth:ready", ({ detail: { user } }) => {
+  updateJordanGuideForUser(user);
+});
+
 async function bootstrap() {
   let currentUser = null;
   if (isLoggedIn()) {
