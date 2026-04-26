@@ -30,6 +30,7 @@ def test_client_scripts_reference_cookie_auth_flow() -> None:
     register_js = (PROJECT_ROOT / "static" / "register.js").read_text()
 
     assert "landed_has_session" in auth_js
+    assert "landed_jwt" not in auth_js
     assert 'credentials: "include"' in auth_js
     assert "/auth/me" in auth_js
     assert "/auth/resume" in index_js

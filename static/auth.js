@@ -1,32 +1,38 @@
-const TOKEN_KEY = "landed_jwt";
+const SESSION_FLAG = "landed_has_session";
 const RESUME_KEY = "landed_user_resume";
 
-function getToken() {
-  return localStorage.getItem(TOKEN_KEY);
-}
-
 function isLoggedIn() {
-  return !!getToken();
+  return !!localStorage.getItem(SESSION_FLAG);
 }
 
-function setToken(token) {
-  if (token) localStorage.setItem(TOKEN_KEY, token);
+function setSessionFlag() {
+  localStorage.setItem(SESSION_FLAG, "1");
 }
 
-function clearAuth() {
-  localStorage.removeItem(TOKEN_KEY);
+function clearSessionFlag() {
+  localStorage.removeItem(SESSION_FLAG);
+}
+
+async function clearAuth() {
+  clearSessionFlag();
   localStorage.removeItem(RESUME_KEY);
   localStorage.removeItem("landed_user_email");
+  try {
+    await fetch("/auth/logout", {
+      method: "POST",
+      credentials: "include",
+    });
+  } catch (_) {}
 }
 
 function getAuthHeaders(headers = {}) {
-  const token = getToken();
-  return token ? { ...headers, Authorization: `Bearer ${token}` } : headers;
+  return headers;
 }
 
 async function fetchJson(url, options = {}) {
   const response = await fetch(url, {
     ...options,
+    credentials: "include",
     headers: getAuthHeaders(options.headers || {}),
   });
   return response;
@@ -36,13 +42,14 @@ async function fetchCurrentUser() {
   if (!isLoggedIn()) return null;
   const response = await fetchJson("/auth/me");
   if (response.status === 401) {
-    clearAuth();
+    await clearAuth();
     return null;
   }
   if (!response.ok) {
     throw new Error("Failed to fetch current user");
   }
   const user = await response.json();
+  setSessionFlag();
   localStorage.setItem("landed_user_email", user.email);
   if (user.resume && user.resume.trim()) {
     localStorage.setItem(RESUME_KEY, user.resume);
@@ -87,16 +94,16 @@ function renderAuthNav(user = null) {
 }
 
 window.LandedAuth = {
-  TOKEN_KEY,
+  SESSION_FLAG,
   RESUME_KEY,
   clearAuth,
+  clearSessionFlag,
   fetchCurrentUser,
   fetchJson,
   getAuthHeaders,
-  getToken,
   isLoggedIn,
   redirectToLogin,
   renderAuthNav,
   requireAuth,
-  setToken,
+  setSessionFlag,
 };

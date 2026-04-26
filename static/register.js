@@ -15,6 +15,7 @@ registerForm?.addEventListener("submit", async (event) => {
   const form = new FormData(registerForm);
   const response = await fetch("/auth/register", {
     method: "POST",
+    credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       name: form.get("name"),
@@ -29,7 +30,7 @@ registerForm?.addEventListener("submit", async (event) => {
     return;
   }
 
-  setToken(payload.access_token);
+  setSessionFlag();
   try {
     await fetchCurrentUser();
   } catch (_) {}

@@ -67,4 +67,10 @@ def set_auth_cookie(response, token: str) -> None:
 
 def clear_auth_cookie(response) -> None:
     """Clear the auth session cookie."""
-    response.delete_cookie(key=COOKIE_NAME, path="/", httponly=True, samesite="lax")
+    response.delete_cookie(
+        key=COOKIE_NAME,
+        path="/",
+        httponly=True,
+        secure=_cookie_secure_flag(),
+        samesite="lax",
+    )

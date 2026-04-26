@@ -1,4 +1,4 @@
-// Uses auth.js globals directly: TOKEN_KEY, RESUME_KEY, setToken, fetchCurrentUser
+// Uses auth.js globals directly: RESUME_KEY, fetchCurrentUser, setSessionFlag
 
 const loginForm = document.querySelector("#auth-form");
 const loginError = document.querySelector("#auth-error");
@@ -15,6 +15,7 @@ loginForm?.addEventListener("submit", async (event) => {
   const form = new FormData(loginForm);
   const response = await fetch("/auth/login", {
     method: "POST",
+    credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       email: form.get("email"),
@@ -28,7 +29,7 @@ loginForm?.addEventListener("submit", async (event) => {
     return;
   }
 
-  setToken(payload.access_token);
+  setSessionFlag();
   if (payload.user?.resume) {
     localStorage.setItem(RESUME_KEY, payload.user.resume);
   }

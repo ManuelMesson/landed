@@ -205,6 +205,17 @@ async def test_bearer_token_still_works(client) -> None:
 
 
 @pytest.mark.anyio
+async def test_security_headers_present(client) -> None:
+    response = await client.get("/health")
+
+    assert response.status_code == 200
+    assert response.headers["x-content-type-options"] == "nosniff"
+    assert response.headers["x-frame-options"] == "DENY"
+    assert response.headers["referrer-policy"] == "strict-origin-when-cross-origin"
+    assert "frame-ancestors 'none'" in response.headers["content-security-policy"]
+
+
+@pytest.mark.anyio
 async def test_register_name_too_long_fails(client) -> None:
     result = await _register(client, email="sam@example.com", name="s" * 51)
 
