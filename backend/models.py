@@ -92,6 +92,7 @@ class JordanStartResponse(BaseModel):
     audio_url: str
     prefetched_audio_urls: list[str] = Field(default_factory=list)
     display_name: str = ""
+    greeting: str = ""
     warmup_text: str = ""
     context_summary: str = ""
     readiness_score: float = 0

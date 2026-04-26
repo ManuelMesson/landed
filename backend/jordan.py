@@ -613,6 +613,54 @@ def _build_summary(transcript: list[dict], context_summary: str, resume: str = "
         return "Session complete. Focus on adding specific metrics and examples to your answers."
 
 
+def _build_greeting(
+    context_summary: str,
+    resume: str,
+    candidate_name: str,
+    session_count: int,
+    readiness_score: float,
+    known_weaknesses: list,
+    fit_level: str,
+) -> str:
+    """Jordan generates a personal greeting — never the same twice, never a template."""
+    api_key = os.getenv("ANTHROPIC_API_KEY")
+    if not api_key or not candidate_name:
+        return ""
+
+    history = ""
+    if session_count > 0:
+        history = f" {session_count} sessions completed. Readiness: {readiness_score:.1f}/10."
+        if known_weaknesses:
+            history += f" Known gap: {known_weaknesses[0]}."
+
+    system = (
+        f"You are Jordan, a non-binary career navigator. Generate a 1-2 sentence personal greeting for {candidate_name}. "
+        f"Session number: {'1 (first time)' if session_count == 0 else session_count + 1}.{history} "
+        f"Fit level: {fit_level}. "
+        "Rules: "
+        "Start with their name followed by a period — just the name, nothing else on that beat. "
+        "Then one direct sentence that references something SPECIFIC from their history or resume — never generic. "
+        "First session: name something real from their resume (a company, role, or project). "
+        "Returning: reference their actual score, a specific weakness, or observable progress. "
+        "Vary the structure — never sound like the same template twice. "
+        "Output: the greeting text only, nothing else."
+    )
+
+    try:
+        from anthropic import Anthropic
+        client = Anthropic(api_key=api_key)
+        response = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=80,
+            system=system,
+            messages=[{"role": "user", "content": f"Context: {context_summary}\n\nResume (first 600 chars): {resume[:600]}"}],
+        )
+        return response.content[0].text.strip()
+    except Exception:
+        logger.warning("Jordan greeting generation failed, falling back to empty")
+        return ""
+
+
 async def start_session(*, mode: str, context_id: int, user_id: int) -> JordanStartResponse:
     context_summary, resume = build_context(mode=mode, context_id=context_id, user_id=user_id)
     track_key = make_track_key(user_id=user_id, mode=mode, context_id=context_id)
@@ -652,12 +700,23 @@ async def start_session(*, mode: str, context_id: int, user_id: int) -> JordanSt
     transcript = [{"speaker": "jordan", "text": opening_question, "fit_level": fit_level, "company_type": company_type}]
     session = database.create_jordan_session(mode=mode, context_id=context_id, transcript=transcript, user_id=user_id)
 
+    greeting = _build_greeting(
+        context_summary=context_summary,
+        resume=resume,
+        candidate_name=candidate_name,
+        session_count=prior_profile.session_count if prior_profile else 0,
+        readiness_score=prior_profile.readiness_score if prior_profile else 0.0,
+        known_weaknesses=prior_profile.known_weaknesses if prior_profile else [],
+        fit_level=fit_level,
+    )
+
     return JordanStartResponse(
         session_id=session.id,
         question_text=opening_question,
         audio_url=await synthesize_audio(opening_question),
         prefetched_audio_urls=[],
         display_name=_user_first_name(user),
+        greeting=greeting,
         warmup_text=warmup_text,
         context_summary=context_summary,
         readiness_score=prior_profile.readiness_score if prior_profile else 0,
