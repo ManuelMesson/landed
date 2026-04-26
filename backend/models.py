@@ -160,6 +160,23 @@ class AuthLoginRequest(BaseModel):
     password: str
 
 
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordVerifyResponse(BaseModel):
+    valid: bool = True
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str = Field(min_length=1)
+    password: str = Field(min_length=8)
+
+
+class MessageResponse(BaseModel):
+    message: str
+
+
 class ResumeUpdateRequest(BaseModel):
     resume: str
 
@@ -186,3 +203,12 @@ class AuthTokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: UserResponse
+
+
+class PasswordResetTokenRecord(BaseModel):
+    id: int
+    user_id: int
+    token: str
+    expires_at: str
+    used: int = 0
+    created_at: str

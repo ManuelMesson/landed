@@ -2,10 +2,17 @@
 
 const loginForm = document.querySelector("#auth-form");
 const loginError = document.querySelector("#auth-error");
+const loginToast = document.querySelector("#auth-toast");
 
 function showLoginError(message) {
   loginError.textContent = message;
   loginError.classList.remove("hidden");
+}
+
+const loginMessage = new URLSearchParams(window.location.search).get("message");
+if (loginMessage === "password-reset" && loginToast) {
+  loginToast.textContent = "Password updated. Sign in.";
+  loginToast.classList.remove("hidden");
 }
 
 loginForm?.addEventListener("submit", async (event) => {

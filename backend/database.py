@@ -4,10 +4,21 @@ import json
 import os
 import sqlite3
 from contextlib import contextmanager
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Iterator
 
-from models import AnalysisResult, CandidateProfile, JobCreate, JobRecord, JobWithTrack, JordanSession, PositionTrack, UserRecord
+from models import (
+    AnalysisResult,
+    CandidateProfile,
+    JobCreate,
+    JobRecord,
+    JobWithTrack,
+    JordanSession,
+    PasswordResetTokenRecord,
+    PositionTrack,
+    UserRecord,
+)
 
 MANUEL_RESUME = """
 Name: Manuel Messon-Roque
@@ -135,6 +146,16 @@ def init_db() -> None:
               last_session_summary TEXT DEFAULT '',
               last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
+
+            CREATE TABLE IF NOT EXISTS password_reset_tokens (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              user_id INTEGER NOT NULL,
+              token TEXT NOT NULL UNIQUE,
+              expires_at TEXT NOT NULL,
+              used INTEGER DEFAULT 0,
+              created_at TEXT DEFAULT (datetime('now')),
+              FOREIGN KEY (user_id) REFERENCES users(id)
+            );
             """
         )
         try:
@@ -246,6 +267,75 @@ def update_user_resume(user_id: int, resume: str) -> UserRecord | None:
             (resume, user_id),
         )
     return get_user_by_id(user_id)
+
+
+def update_user_password(user_id: int, password_hash: str) -> UserRecord | None:
+    """Persist a user's password hash."""
+    with get_connection() as connection:
+        connection.execute(
+            "UPDATE users SET password_hash = ? WHERE id = ?",
+            (password_hash, user_id),
+        )
+    return get_user_by_id(user_id)
+
+
+def _password_reset_token_from_row(row: sqlite3.Row) -> PasswordResetTokenRecord:
+    """Convert a sqlite row into a password reset token model."""
+    return PasswordResetTokenRecord(**dict(row))
+
+
+def create_password_reset_token(user_id: int, token: str, expires_at: str) -> PasswordResetTokenRecord:
+    """Create a password reset token for a user."""
+    with get_connection() as connection:
+        cursor = connection.execute(
+            "INSERT INTO password_reset_tokens (user_id, token, expires_at) VALUES (?, ?, ?)",
+            (user_id, token, expires_at),
+        )
+        token_id = int(cursor.lastrowid)
+        row = connection.execute(
+            """
+            SELECT id, user_id, token, expires_at, used, created_at
+            FROM password_reset_tokens
+            WHERE id = ?
+            """,
+            (token_id,),
+        ).fetchone()
+    if row is None:
+        raise RuntimeError("Failed to load newly created password reset token")
+    return _password_reset_token_from_row(row)
+
+
+def get_password_reset_token(token: str) -> PasswordResetTokenRecord | None:
+    """Return a password reset token by its raw token string."""
+    with get_connection() as connection:
+        row = connection.execute(
+            """
+            SELECT id, user_id, token, expires_at, used, created_at
+            FROM password_reset_tokens
+            WHERE token = ?
+            """,
+            (token,),
+        ).fetchone()
+    return _password_reset_token_from_row(row) if row else None
+
+
+def mark_password_reset_token_used(token: str) -> None:
+    """Mark a password reset token as used."""
+    with get_connection() as connection:
+        connection.execute(
+            "UPDATE password_reset_tokens SET used = 1 WHERE token = ?",
+            (token,),
+        )
+
+
+def password_reset_token_is_valid(record: PasswordResetTokenRecord) -> bool:
+    """Return whether a password reset token is unused and unexpired."""
+    if record.used:
+        return False
+    expires_at = datetime.fromisoformat(record.expires_at)
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=UTC)
+    return expires_at > datetime.now(UTC)
 
 
 def _job_from_row(row: sqlite3.Row) -> JobWithTrack:

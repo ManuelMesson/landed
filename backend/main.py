@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import logging
 import os
+import secrets
 import sqlite3
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -24,11 +26,15 @@ from models import (
     AuthLoginRequest,
     AuthRegisterRequest,
     AuthTokenResponse,
+    ForgotPasswordRequest,
     HealthResponse,
     JobCreate,
     JobUpdate,
     JordanRespondRequest,
     JordanStartRequest,
+    MessageResponse,
+    ResetPasswordRequest,
+    ResetPasswordVerifyResponse,
     ResumeUpdateRequest,
     TrackResumeUpdate,
     UserRecord,
@@ -219,6 +225,53 @@ async def logout(response: Response) -> dict[str, str]:
     return {"status": "logged out"}
 
 
+@app.post("/auth/forgot-password", response_model=MessageResponse)
+async def forgot_password(request: ForgotPasswordRequest) -> MessageResponse:
+    """Send a password reset email when the account exists."""
+    # Post-launch: add per-IP and per-email rate limiting for reset attempts.
+    message = "If that email exists, a reset link is on its way."
+    user = database.get_user_by_email(str(request.email))
+    if user is None:
+        return MessageResponse(message=message)
+
+    token = secrets.token_urlsafe(32)
+    expires_at = (datetime.now(UTC) + timedelta(hours=1)).isoformat()
+    database.create_password_reset_token(user_id=user.id, token=token, expires_at=expires_at)
+    reset_url = auth.build_password_reset_url(token)
+    try:
+        auth.send_reset_email(str(user.email), reset_url)
+    except Exception:
+        logging.exception("Failed to send password reset email for user_id=%s", user.id)
+    return MessageResponse(message=message)
+
+
+@app.get("/auth/reset-password/verify", response_model=ResetPasswordVerifyResponse)
+async def verify_reset_password(token: str = Query(min_length=1)) -> ResetPasswordVerifyResponse:
+    """Validate a password reset token."""
+    reset_token = database.get_password_reset_token(token)
+    if reset_token is None or not database.password_reset_token_is_valid(reset_token):
+        raise HTTPException(status_code=400, detail="Invalid or expired token")
+    return ResetPasswordVerifyResponse(valid=True)
+
+
+@app.post("/auth/reset-password", response_model=MessageResponse)
+async def reset_password(request: ResetPasswordRequest) -> MessageResponse:
+    """Set a new password using a valid reset token."""
+    reset_token = database.get_password_reset_token(request.token)
+    if reset_token is None or not database.password_reset_token_is_valid(reset_token):
+        raise HTTPException(status_code=400, detail="Invalid or expired token")
+
+    user = database.update_user_password(
+        reset_token.user_id,
+        auth.get_password_hash(request.password),
+    )
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    database.mark_password_reset_token_used(request.token)
+    return MessageResponse(message="Password updated. Sign in.")
+
+
 @app.get("/auth/me", response_model=UserResponse)
 async def auth_me(current_user: UserRecord = Depends(get_current_user)) -> UserResponse:
     """Return the current authenticated user."""
@@ -368,3 +421,15 @@ async def login_page() -> FileResponse:
 async def register_page() -> FileResponse:
     """Serve the registration page."""
     return _page("register.html")
+
+
+@app.get("/forgot-password")
+async def forgot_password_page() -> FileResponse:
+    """Serve the forgot-password page."""
+    return _page("forgot-password.html")
+
+
+@app.get("/reset-password")
+async def reset_password_page() -> FileResponse:
+    """Serve the reset-password page."""
+    return _page("reset-password.html")
