@@ -15,7 +15,7 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import FileResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.staticfiles import StaticFiles
-from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 import auth
 import database
@@ -64,15 +64,15 @@ async def lifespan(_: FastAPI):
 app = FastAPI(title="Landed", lifespan=lifespan)
 
 
-class SecurityHeadersMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next):
-        response = await call_next(request)
-        response.headers["X-Content-Type-Options"] = "nosniff"
-        response.headers["X-Frame-Options"] = "DENY"
-        response.headers["X-XSS-Protection"] = "1; mode=block"
-        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-        response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
-        response.headers["Content-Security-Policy"] = (
+_SECURITY_HEADERS = [
+    (b"x-content-type-options", b"nosniff"),
+    (b"x-frame-options", b"DENY"),
+    (b"x-xss-protection", b"1; mode=block"),
+    (b"referrer-policy", b"strict-origin-when-cross-origin"),
+    (b"permissions-policy", b"camera=(), microphone=(), geolocation=()"),
+    (
+        b"content-security-policy",
+        (
             "default-src 'self'; "
             "script-src 'self'; "
             "style-src 'self' https://fonts.googleapis.com; "
@@ -81,8 +81,30 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "connect-src 'self'; "
             "media-src 'self' blob:; "
             "frame-ancestors 'none';"
-        )
-        return response
+        ).encode(),
+    ),
+]
+
+
+class SecurityHeadersMiddleware:
+    """Pure ASGI middleware — injects security headers without touching Set-Cookie."""
+
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        async def send_with_headers(message):
+            if message["type"] == "http.response.start":
+                headers = list(message.get("headers", []))
+                headers.extend(_SECURITY_HEADERS)
+                message = {**message, "headers": headers}
+            await send(message)
+
+        await self.app(scope, receive, send_with_headers)
 
 
 def _trusted_hosts() -> list[str]:
@@ -97,14 +119,26 @@ def _trusted_hosts() -> list[str]:
     return sorted(hosts)
 
 
+def _cors_origins() -> list[str]:
+    """Explicit allowed origins — never use wildcard with credentials."""
+    origins = {"http://localhost:8000", "http://127.0.0.1:8000"}
+    render_hostname = os.getenv("RENDER_EXTERNAL_HOSTNAME", "").strip()
+    if render_hostname:
+        origins.add(f"https://{render_hostname}")
+    extra = os.getenv("CORS_ORIGINS", "").strip()
+    if extra:
+        origins.update(o.strip() for o in extra.split(",") if o.strip())
+    return sorted(origins)
+
+
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=_trusted_hosts())
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_cors_origins(),
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"],
 )
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
 
