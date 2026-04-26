@@ -18,6 +18,29 @@ const retryButton = document.querySelector("#retry-button");
 const restartButton = document.querySelector("#restart-button");
 const summaryCard = document.querySelector("#summary-card");
 const sessionTypeBar = document.querySelector("#session-type-bar");
+
+// Jordan presence — visual state system
+const jordanPresence = document.querySelector("#jordan-presence");
+const jordanPresenceLabel = document.querySelector("#jordan-presence-label");
+
+function setJordanState(state) {
+  if (!jordanPresence) return;
+  jordanPresence.classList.remove("is-speaking", "is-thinking");
+  if (state === "speaking") {
+    jordanPresence.classList.add("is-speaking");
+    if (jordanPresenceLabel) jordanPresenceLabel.textContent = "Speaking";
+  } else if (state === "thinking") {
+    jordanPresence.classList.add("is-thinking");
+    if (jordanPresenceLabel) jordanPresenceLabel.textContent = "Thinking";
+  }
+}
+
+// Wire audio events to Jordan's visual state
+if (audioEl) {
+  audioEl.addEventListener("play",  () => setJordanState("speaking"));
+  audioEl.addEventListener("pause", () => setJordanState("idle"));
+  audioEl.addEventListener("ended", () => setJordanState("idle"));
+}
 const warmupSessionBadge = document.querySelector("#warmup-session-badge");
 const summarySessionBadge = document.querySelector("#summary-session-badge");
 const warmupReturningNote = document.querySelector("#warmup-returning-note");
@@ -101,6 +124,7 @@ function setThinking(on) {
   questionBubble.classList.toggle("hidden", on);
   if (on) coachingBubble.classList.add("hidden");
   setStatusText(on ? "Jordan is thinking" : "Jordan is listening");
+  if (on) setJordanState("thinking");
 }
 
 function setCoaching(text) {

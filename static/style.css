@@ -2043,6 +2043,128 @@ body[data-page="jordan"] .auth-greeting {
 
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* ─── Jordan Presence System ─── */
+
+@keyframes jordan-voice-bar {
+  0%, 100% { transform: scaleY(0.25); opacity: 0.35; }
+  50%       { transform: scaleY(1);   opacity: 1; }
+}
+
+@keyframes jordan-glow-pulse {
+  from { box-shadow: 0 0 28px rgba(124,58,237,0.55), 0 0 8px rgba(124,58,237,0.2); }
+  to   { box-shadow: 0 0 52px rgba(124,58,237,0.95), 0 0 90px rgba(124,58,237,0.35); }
+}
+
+@keyframes jordan-think-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Presence bar shown during Jordan session above the question */
+.jordan-presence {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 0 4px;
+}
+
+.jordan-presence-mark {
+  position: relative;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.jordan-presence-ring {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  font-weight: 900;
+  color: #fff;
+  box-shadow: 0 0 28px rgba(124,58,237,0.5);
+  transition: box-shadow 300ms;
+  letter-spacing: -0.02em;
+  position: relative;
+}
+
+/* Thinking: spinning arc around the ring */
+.jordan-presence.is-thinking .jordan-presence-ring::after {
+  content: '';
+  position: absolute;
+  inset: -5px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  border-top-color: #a78bfa;
+  border-right-color: rgba(167,139,250,0.25);
+  animation: jordan-think-spin 0.9s linear infinite;
+}
+
+/* Speaking: glow pulses */
+.jordan-presence.is-speaking .jordan-presence-ring {
+  animation: jordan-glow-pulse 0.7s ease-in-out infinite alternate;
+}
+
+/* Waveform bars */
+.jordan-voice-bars {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 30px;
+  opacity: 0;
+  transition: opacity 220ms;
+}
+
+.jordan-presence.is-speaking .jordan-voice-bars {
+  opacity: 1;
+}
+
+.jordan-voice-bar {
+  width: 3px;
+  background: linear-gradient(to top, #7c3aed, #c4b5fd);
+  border-radius: 3px;
+  transform-origin: center;
+  animation: jordan-voice-bar 0.5s ease-in-out infinite alternate;
+}
+
+.jordan-voice-bar:nth-child(1) { height: 8px;  animation-duration: 0.44s; animation-delay: 0s; }
+.jordan-voice-bar:nth-child(2) { height: 16px; animation-duration: 0.60s; animation-delay: 0.07s; }
+.jordan-voice-bar:nth-child(3) { height: 24px; animation-duration: 0.46s; animation-delay: 0.13s; }
+.jordan-voice-bar:nth-child(4) { height: 28px; animation-duration: 0.64s; animation-delay: 0.04s; }
+.jordan-voice-bar:nth-child(5) { height: 24px; animation-duration: 0.50s; animation-delay: 0.10s; }
+.jordan-voice-bar:nth-child(6) { height: 16px; animation-duration: 0.56s; animation-delay: 0.06s; }
+.jordan-voice-bar:nth-child(7) { height: 8px;  animation-duration: 0.48s; animation-delay: 0.02s; }
+
+.jordan-presence-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #a78bfa;
+  opacity: 0;
+  transition: opacity 200ms;
+}
+
+.jordan-presence.is-speaking .jordan-presence-label,
+.jordan-presence.is-thinking .jordan-presence-label {
+  opacity: 1;
+}
+
+/* Upgrade all static Jordan avatar rings — more alive */
+.auth-jordan-ring,
+.onboarding-avatar-ring,
+.jordan-guide-ring {
+  box-shadow: 0 0 32px rgba(124,58,237,0.55), 0 0 8px rgba(124,58,237,0.25), inset 0 1px 0 rgba(255,255,255,0.2) !important;
+}
+
+.jordan-farewell-avatar {
+  box-shadow: 0 0 44px rgba(124,58,237,0.7) !important;
+}
+
 /* ── Analyzer page chrome override ── */
 
 body[data-page="analyzer"] .top-bar {
