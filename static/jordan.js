@@ -164,17 +164,38 @@ function renderWarmup(data) {
   const hasHistory = data.session_count > 0;
   const hasWeakness = data.known_weaknesses && data.known_weaknesses.length > 0;
 
-  // Greeting — specific to where they are in the journey
+  // Greeting — varied so Jordan never sounds like a recording
+  const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
   let greetingText = "";
   if (name) {
     if (!hasHistory) {
-      greetingText = `${name}. First session. Let's find out exactly where you stand.`;
+      greetingText = pick([
+        `${name}. First session. Let's find out exactly where you stand.`,
+        `${name}. Haven't worked together yet. Let's change that.`,
+        `${name}. First time? Good. Let's see what we're working with.`,
+        `${name}. Fresh start. Tell me what you're going for.`,
+      ]);
     } else if (data.readiness_score >= 8) {
-      greetingText = `${name}. You're at ${data.readiness_score.toFixed(1)}/10 — that's real. Let's keep going.`;
+      greetingText = pick([
+        `${name}. You're at ${data.readiness_score.toFixed(1)}/10 — that's real. Let's keep going.`,
+        `${name}. ${data.readiness_score.toFixed(1)}/10. You've put in the work. Let's finish it.`,
+        `${name}. That ${data.readiness_score.toFixed(1)} didn't come from nowhere. Let's push higher.`,
+      ]);
     } else if (hasWeakness) {
-      greetingText = `${name}. You're back. Last time ${data.known_weaknesses[0]} held you down — that's what we're fixing today.`;
+      greetingText = pick([
+        `${name}. You're back. Last time ${data.known_weaknesses[0]} held you down — that's what we're fixing today.`,
+        `${name}. Still got ${data.known_weaknesses[0]} on the list. Let's close it.`,
+        `${name}. We know the gap — ${data.known_weaknesses[0]}. Let's work it.`,
+      ]);
     } else {
-      greetingText = `${name}. Good to see you back. Let's pick up where we left off.`;
+      greetingText = pick([
+        `${name}. Good to see you back. Let's pick up where we left off.`,
+        `${name}. You came back. That means you're serious.`,
+        `${name}. Back again. Good. Let's make this one count.`,
+        `${name}. Welcome back. What are we working on today?`,
+        `${name}. Ready when you are. Let's get into it.`,
+      ]);
     }
   }
   const displayName = greetingText ? `<p class="warmup-greeting">${greetingText}</p>` : "";
