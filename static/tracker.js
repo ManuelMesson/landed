@@ -192,7 +192,6 @@ jobsBody.addEventListener("click", (event) => {
 });
 
 async function bootstrap() {
-  if (!requireAuth()) return;
   const user = await fetchCurrentUser();
   if (!user) {
     redirectToLogin();

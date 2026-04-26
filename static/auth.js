@@ -39,7 +39,6 @@ async function fetchJson(url, options = {}) {
 }
 
 async function fetchCurrentUser() {
-  if (!isLoggedIn()) return null;
   const response = await fetchJson("/auth/me");
   if (response.status === 401) {
     await clearAuth();

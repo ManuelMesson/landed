@@ -326,12 +326,12 @@ window.addEventListener("auth:ready", ({ detail: { user } }) => {
 
 async function bootstrap() {
   let currentUser = null;
-  if (isLoggedIn()) {
-    try {
-      currentUser = await fetchCurrentUser();
-    } catch {
-      currentUser = null;
-    }
+  try {
+    // Always probe the server — cookie may be valid even if the localStorage flag is missing
+    // (different tab, cleared storage, fresh device). fetchCurrentUser() sets the flag on success.
+    currentUser = await fetchCurrentUser();
+  } catch {
+    currentUser = null;
   }
 
   renderAuthNav(currentUser);

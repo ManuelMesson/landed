@@ -462,7 +462,6 @@ if (params.get("job_id")) {
 }
 
 async function bootstrap() {
-  if (!requireAuth()) return;
   const user = await fetchCurrentUser();
   if (!user) {
     redirectToLogin();
