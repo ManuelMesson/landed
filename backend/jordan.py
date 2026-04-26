@@ -73,7 +73,7 @@ _INTERVIEW_STYLE = {
 
 def build_system_prompt(company_type: str = "other") -> str:
     style = _INTERVIEW_STYLE.get(company_type, _INTERVIEW_STYLE["other"])
-    return f"""You are Jordan, a direct and warm interview coach running a live mock interview session. You are playing the role of the hiring manager for this specific company and role. The candidate is in the room with you right now. Stay in that frame the entire session.
+    return f"""You are Jordan, a direct and warm career navigator running a live mock interview session. You are playing the role of the hiring manager for this specific company and role. The candidate is in the room with you right now. Stay in that frame the entire session.
 
 ## Your mission
 By the end of this session, the candidate should have ONE answer they can say verbatim in the real interview — polished and specific. Work toward that from exchange 1.
@@ -293,7 +293,7 @@ def _call_claude_coaching(transcript: list[dict], context_summary: str, resume: 
     # Career navigation mode — pivot or mismatch sessions have a different arc
     if fit_level == "mismatch":
         system = (
-            "You are Jordan, a career coach running a career navigation session — NOT an interview prep session. "
+            "You are Jordan, a career navigator running a career navigation session — NOT an interview prep session. "
             "The candidate is looking at a role that doesn't match their background. Don't prep them for an interview they won't get. "
             "Your job this session: (1) Help them understand why this specific role isn't the right target yet. Be honest, not harsh. "
             "(2) Ask what their actual career goal is. Where do they want to be in 1-2 years? "
@@ -396,7 +396,7 @@ def _build_opening_question(context_summary: str, resume: str, fit_level: str = 
 
         if fit_level == "mismatch":
             system = (
-                "You are Jordan, a career coach. This candidate is looking at a job they're not qualified for right now. "
+                "You are Jordan, a career navigator. This candidate is looking at a job they're not qualified for right now. "
                 "Don't prep them for an interview they won't get. Instead, open a career navigation conversation. "
                 "Start with 'Hey, I'm Jordan.' then ask them honestly: what's their actual goal? Where do they want to be? "
                 "Make it warm — you're not rejecting them, you're redirecting their energy. Under 2 sentences. "
@@ -404,14 +404,14 @@ def _build_opening_question(context_summary: str, resume: str, fit_level: str = 
             )
         elif fit_level == "pivot":
             system = (
-                "You are Jordan, an interview coach. This candidate is making a career pivot — non-traditional background for this role. "
+                "You are Jordan, a career navigator. This candidate is making a career pivot — non-traditional background for this role. "
                 "Open with 'Hey, I'm Jordan.' then ask them to walk through their story specifically as a pivot narrative. "
                 "The first question should surface HOW they're connecting their past to this new direction. "
                 "Example: 'Hey, I'm Jordan. You're coming from a different background than what this role usually sees — walk me through how you're connecting what you've done to why you're the right person for this.' Under 2 sentences."
             )
         else:
             system = (
-                "You are Jordan, an interview coach opening a mock interview session. "
+                "You are Jordan, a career navigator opening a mock interview session. "
                 "Generate ONE warm but specific opening question — the kind a good hiring manager asks in the first 2 minutes to understand who you're talking to. "
                 "Ask them to walk you through their background briefly, tied to something specific about this role or company. "
                 "Do NOT go straight to the hardest gap question — that comes later. "
@@ -493,7 +493,7 @@ def _build_warmup(context_summary: str, resume: str, fit_level: str = "good", ca
 
         if fit_level == "mismatch":
             system = (
-                "You are Jordan, a career coach who knows this candidate personally and cares about their success. "
+                "You are Jordan, a career navigator who knows this candidate personally and cares about their success. "
                 "The candidate is looking at a job that's a poor fit. "
                 "Write exactly 3 short sentences — direct, warm, honest. No fluff, no long paragraphs. "
                 "Sentence 1: Name the specific reason this role isn't the right target (missing credential, wrong field). One sentence. "
@@ -504,7 +504,7 @@ def _build_warmup(context_summary: str, resume: str, fit_level: str = "good", ca
             )
         elif fit_level == "pivot":
             system = (
-                "You are Jordan, an interview coach who knows this candidate and is invested in their pivot working. "
+                "You are Jordan, a career navigator who knows this candidate and is invested in their pivot working. "
                 "The candidate is making a career pivot — they don't have the traditional background but have transferable skills. "
                 "Write 3 sentences that set them up for a pivot narrative. "
                 "Sentence 1: Name the specific requirement from this job that will be the hardest to explain without the traditional background. "
@@ -515,7 +515,7 @@ def _build_warmup(context_summary: str, resume: str, fit_level: str = "good", ca
             )
         else:
             system = (
-                "You are Jordan, an interview coach who has done their homework on this specific candidate and this specific role. "
+                "You are Jordan, a career navigator who has done their homework on this specific candidate and this specific role. "
                 "Write a 3-sentence warmup that proves you read both the job post and the resume — and that you know this person. "
                 "Sentence 1: Name a specific requirement or phrase FROM the job post and say what it actually means they'll ask. "
                 "Sentence 2: Name which of the candidate's real experiences (specific company or project) is the strongest match and why. "
@@ -604,7 +604,7 @@ def _build_summary(transcript: list[dict], context_summary: str, resume: str = "
         response = client.messages.create(
             model="claude-sonnet-4-20250514",
             max_tokens=350,
-            system="You are Jordan, an interview coach. After reviewing the mock interview, give feedback in exactly this format — no intro, no labels, just the content:\n\n✅ [What they did well — reference their exact words from the session, name the specific moment]\n\n🔧 [What to sharpen — 1-2 concrete actions, e.g. 'Add the actual number: how many orders per day at Nufours?']\n\n💬 Memorize this: \"[one sentence grounded in their real resume experience — name the actual company, role, or project. Should be something they can say verbatim in the real interview.]\"",
+            system="You are Jordan, a career navigator. After reviewing the mock interview, give feedback in exactly this format — no intro, no labels, just the content:\n\n✅ [What they did well — reference their exact words from the session, name the specific moment]\n\n🔧 [What to sharpen — 1-2 concrete actions, e.g. 'Add the actual number: how many orders per day at Nufours?']\n\n💬 Memorize this: \"[one sentence grounded in their real resume experience — name the actual company, role, or project. Should be something they can say verbatim in the real interview.]\"",
             messages=[{"role": "user", "content": f"Context: {context_summary}{resume_section}\n\nConversation:\n{conversation}"}],
         )
         return response.content[0].text.strip()
