@@ -47,7 +47,7 @@ async def test_register_without_name(client) -> None:
     result = await _register(client, email="manuelmesson@example.com")
 
     assert result["status_code"] == 201
-    assert result["json"]["user"]["display_name"] == "Manuelmesson"
+    assert result["json"]["user"]["display_name"] == "Manuelmess"  # capped at 10 chars
 
 
 @pytest.mark.anyio

@@ -144,10 +144,12 @@ app.mount("/static", StaticFiles(directory=STATIC), name="static")
 
 
 def _fallback_display_name(email: str) -> str:
-    """Build a basic first-name fallback from the email local part."""
+    """Extract a usable first-name token from an email address."""
     local_part = email.split("@", 1)[0]
-    first_chunk = local_part.split(".", 1)[0]
-    return first_chunk.capitalize()
+    # Split on common separators first (john.doe, john_doe, john-doe)
+    first_chunk = local_part.split(".", 1)[0].split("_", 1)[0].split("-", 1)[0]
+    # Cap at 10 characters so concatenated usernames (manuelmesson) stay readable
+    return first_chunk[:10].capitalize()
 
 
 def _serialize_user(user: UserRecord) -> UserResponse:

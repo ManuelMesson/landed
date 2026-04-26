@@ -75,8 +75,10 @@ function renderAuthNav(user = null) {
   if (!slot) return;
 
   if (user) {
-    const name = user.display_name || user.email.split("@")[0].replace(/[._\-0-9].*/, "");
-    const greeting = name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
+    const rawName = user.display_name || user.email.split("@")[0].split(".")[0];
+    // Use first word only (handles "Manuel Messon" → "Manuel")
+    const firstName = rawName.split(/\s+/)[0];
+    const greeting = firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase();
     slot.innerHTML = `
       <span class="auth-greeting">Hey, ${greeting}</span>
       <a href="#" class="nav-pill nav-pill-logout" data-logout-link>Log out</a>

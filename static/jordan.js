@@ -450,7 +450,7 @@ restartButton.addEventListener("click", () => {
   sessionDone = false;
   lastAnswer = "";
   stopTimer();
-  sessionTimer.textContent = "Timer off";
+  sessionTimer.classList.add("hidden");
   coachingBubble.classList.add("hidden");
   setStatusText("Preparing Jordan");
   sessionTypeBar.textContent = "Loading session";
