@@ -95,6 +95,16 @@ async function renderJobs(jobs) {
   // Jordan pipeline summary — specific, not generic
   const jordanMsg = document.getElementById("jordan-pipeline-message");
   if (jordanMsg) {
+    // If user just came from a Jordan session, greet them by company name
+    const lastJobId = sessionStorage.getItem("landed_last_job_id");
+    if (lastJobId) {
+      sessionStorage.removeItem("landed_last_job_id");
+      const lastJob = jobs.find(j => String(j.id) === String(lastJobId));
+      if (lastJob) {
+        jordanMsg.textContent = `Good session with ${lastJob.company}. Here's where everything stands.`;
+        return;
+      }
+    }
     const prepped = profiles.filter(p => p && p.session_count > 0).length;
     const unprepped = jobs.length - prepped;
     // Find highest-scoring unprepped job to call out by name

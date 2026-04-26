@@ -443,6 +443,11 @@ restartButton.addEventListener("click", () => {
 const params = new URLSearchParams(window.location.search);
 const hasContext = params.get("mode") === "job" ? !!params.get("job_id") : !!params.get("track_id");
 
+// Tag the journey with this job_id so My Journey can greet you by company
+if (params.get("job_id")) {
+  sessionStorage.setItem("landed_last_job_id", params.get("job_id"));
+}
+
 async function bootstrap() {
   if (!requireAuth()) return;
   const user = await fetchCurrentUser();

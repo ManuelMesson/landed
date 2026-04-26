@@ -84,8 +84,12 @@ function renderAuthNav(user = null) {
     `;
     slot.querySelector("[data-logout-link]")?.addEventListener("click", async (event) => {
       event.preventDefault();
+      const farewell = document.createElement("div");
+      farewell.className = "jordan-farewell";
+      farewell.innerHTML = `<div class="jordan-farewell-inner"><div class="jordan-farewell-avatar">J</div><p class="jordan-farewell-text">See you next time, ${greeting}.</p></div>`;
+      document.body.appendChild(farewell);
       await clearAuth();
-      window.location.href = "/login";
+      setTimeout(() => { window.location.href = "/login"; }, 1600);
     });
     return;
   }

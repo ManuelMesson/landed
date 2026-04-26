@@ -236,6 +236,45 @@ body {
 }
 
 .nav-pill:hover { color: var(--text); background: rgba(255,255,255,0.1); }
+.nav-pill-active { color: var(--text); background: rgba(124,58,237,0.18); border-color: rgba(124,58,237,0.35); }
+.nav-pill-active:hover { background: rgba(124,58,237,0.25); }
+
+/* Jordan farewell overlay on logout */
+.jordan-farewell {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(8,8,15,0.92);
+  backdrop-filter: blur(12px);
+  animation: revealUp 280ms ease both;
+}
+.jordan-farewell-inner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.jordan-farewell-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(124,58,237,0.3), rgba(37,99,235,0.2));
+  border: 1px solid rgba(124,58,237,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: #a78bfa;
+  flex-shrink: 0;
+}
+.jordan-farewell-text {
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: var(--text);
+}
 
 .auth-email {
   color: var(--text);
