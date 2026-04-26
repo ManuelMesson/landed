@@ -13,6 +13,18 @@ LOGGER = logging.getLogger(__name__)
 GREETING_INTRO = "Hey, I'm Jordan."
 MIN_EXCHANGES = 5
 
+_EXIT_PHRASES = {
+    "exit", "quit", "stop", "end", "bye", "goodbye", "leave",
+    "end session", "stop session", "i'm done", "im done", "i want to leave",
+    "i want to stop", "i want to exit", "i want to quit", "let's stop",
+    "lets stop", "that's enough", "thats enough", "i gotta go", "gotta go",
+}
+
+
+def _is_exit_intent(answer: str) -> bool:
+    cleaned = answer.strip().lower().rstrip(".,!?")
+    return cleaned in _EXIT_PHRASES or any(cleaned.startswith(p) for p in _EXIT_PHRASES)
+
 _INTERVIEW_STYLE = {
     "big_tech": """
 ## Interview style: Big tech / structured corporate
@@ -238,7 +250,7 @@ def build_context(mode: str, context_id: int, *, user_id: int) -> tuple[str, str
     return summary, (user.resume if user and user.resume else track.base_resume)
 
 
-def _call_claude_coaching(transcript: list[dict], context_summary: str, resume: str, session_complete: bool, exchange_count: int = 0, fit_level: str = "good", company_type: str = "other") -> tuple[str, str]:
+def _call_claude_coaching(transcript: list[dict], context_summary: str, resume: str, session_complete: bool, exchange_count: int = 0, fit_level: str = "good", company_type: str = "other", exit_requested: bool = False) -> tuple[str, str]:
     """Call Claude API to generate real coaching + next question from full conversation history."""
     api_key = os.getenv("ANTHROPIC_API_KEY")
     if not api_key:
@@ -310,7 +322,15 @@ def _call_claude_coaching(transcript: list[dict], context_summary: str, resume: 
             "Push them to own the pivot story, not apologize for it. Manuel went from dishwasher to barista to software builder — that's not a gap, that's a story. Help them find their version of that."
         )
 
-    if fit_level == "mismatch" and session_complete:
+    if exit_requested:
+        system += (
+            "\n\nCANDIDATE IS LEAVING EARLY. They said they want to stop. "
+            "Acknowledge it warmly — no pressure. Give them one honest takeaway from what you saw today: "
+            "one thing they did well, one thing to work on before the real interview. "
+            "Keep it to 2-3 sentences. End with 'Come back when you're ready.' "
+            "Do NOT ask another question."
+        )
+    elif fit_level == "mismatch" and session_complete:
         system += (
             "\n\nFINAL EXCHANGE of a career navigation session. "
             "Wrap up with: (1) the one role they should actually be targeting right now based on their background, "
@@ -736,7 +756,8 @@ async def respond(*, session_id: int, answer: str, user_id: int) -> JordanRespon
     transcript.append({"speaker": "user", "text": answer})
 
     exchange_count = sum(1 for t in transcript if t["speaker"] == "user")
-    session_complete = exchange_count >= MIN_EXCHANGES
+    exit_requested = _is_exit_intent(answer)
+    session_complete = exit_requested or exchange_count >= MIN_EXCHANGES
 
     # Get context from session
     context_summary, resume = build_context(mode=session.mode, context_id=session.context_id, user_id=user_id)
@@ -753,6 +774,7 @@ async def respond(*, session_id: int, answer: str, user_id: int) -> JordanRespon
             exchange_count=exchange_count,
             fit_level=fit_level,
             company_type=company_type,
+            exit_requested=exit_requested,
         )
     except Exception as exc:
         LOGGER.warning("Jordan Claude call failed, using fallback: %s", exc)
