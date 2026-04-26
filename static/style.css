@@ -1360,7 +1360,29 @@ textarea { resize: vertical; }
 
 .session-type-prep { background: rgba(99,102,241,0.2); color: #a5b4fc; }
 .session-type-pivot { background: rgba(234,179,8,0.15); color: #fde047; }
-.session-type-navigate { background: rgba(239,68,68,0.15); color: #fca5a5; }
+.session-type-navigate {
+  background: rgba(251,146,60,0.15);
+  color: #fdba74;
+  border-color: rgba(251,146,60,0.3);
+}
+
+/* Mode context banner — shown at top of session for non-standard modes */
+.session-mode-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: rgba(251,146,60,0.08);
+  border-bottom: 1px solid rgba(251,146,60,0.2);
+  font-size: 0.78rem;
+  color: #fdba74;
+  letter-spacing: 0.01em;
+}
+.session-mode-banner.pivot-banner {
+  background: rgba(234,179,8,0.08);
+  border-bottom-color: rgba(234,179,8,0.2);
+  color: #fde047;
+}
 
 .status-Applied   { background: var(--blue); }
 .status-Screening { background: var(--yellow); color: #000; }

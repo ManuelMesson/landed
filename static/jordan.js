@@ -46,6 +46,8 @@ const summarySessionBadge = document.querySelector("#summary-session-badge");
 const warmupReturningNote = document.querySelector("#warmup-returning-note");
 const sessionStatusText = document.querySelector("#session-status-text");
 const sessionTimer = document.querySelector("#session-timer");
+const sessionModeBanner = document.querySelector("#session-mode-banner");
+const sessionModeBannerText = document.querySelector("#session-mode-banner-text");
 
 let sessionId = null;
 let recognition = null;
@@ -85,6 +87,11 @@ function setStatusText(text) {
   sessionStatusText.textContent = text;
 }
 
+const modeBannerCopy = {
+  mismatch: "This is a career navigation session — Jordan will help you find the right target, not prep for a role that isn't the fit yet.",
+  pivot: "Career pivot mode — Jordan will help you own your transition story and bridge your background to this role.",
+};
+
 function applySessionBadge(fitLevel) {
   const fitInfo = fitLabels[fitLevel] || fitLabels.good;
   [sessionTypeBar, warmupSessionBadge, summarySessionBadge].forEach((badge) => {
@@ -92,6 +99,18 @@ function applySessionBadge(fitLevel) {
     badge.textContent = fitInfo.text;
     badge.className = `session-type-badge ${fitInfo.cls}`;
   });
+
+  if (sessionModeBanner && sessionModeBannerText) {
+    const copy = modeBannerCopy[fitLevel];
+    if (copy) {
+      sessionModeBannerText.textContent = copy;
+      sessionModeBanner.classList.remove("hidden");
+      sessionModeBanner.classList.toggle("pivot-banner", fitLevel === "pivot");
+    } else {
+      sessionModeBanner.classList.add("hidden");
+    }
+  }
+
   return fitInfo;
 }
 
