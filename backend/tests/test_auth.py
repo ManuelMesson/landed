@@ -132,47 +132,57 @@ async def test_cookie_auth_accesses_protected_endpoint(client) -> None:
 
 @pytest.mark.anyio
 async def test_jobs_scoped_to_user(client) -> None:
-    user_a = await _register(client, email="a@example.com")
-    user_b = await _register(client, email="b@example.com")
-    headers_a = _auth_headers(user_a["json"]["access_token"])
-    headers_b = _auth_headers(user_b["json"]["access_token"])
+    # Use separate clients per user so session cookies don't bleed across users.
+    # Cookie-first auth means a shared client would authenticate all requests as
+    # whichever user registered last.
+    from main import app
+    import httpx
 
-    analysis = (
-        await client.post(
-            "/analyze",
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client_a, \
+               httpx.AsyncClient(transport=transport, base_url="http://testserver") as client_b:
+
+        user_a = await _register(client_a, email="a@example.com")
+        user_b = await _register(client_b, email="b@example.com")
+        headers_a = _auth_headers(user_a["json"]["access_token"])
+        headers_b = _auth_headers(user_b["json"]["access_token"])
+
+        analysis = (
+            await client_a.post(
+                "/analyze",
+                headers=headers_a,
+                json={
+                    "job_post": "Customer success role focused on onboarding and renewals.",
+                    "resume": "Helped customers onboard and improve adoption by 20 percent.",
+                    "track_id": 1,
+                },
+            )
+        ).json()
+
+        await client_a.post(
+            "/jobs",
             headers=headers_a,
             json={
-                "job_post": "Customer success role focused on onboarding and renewals.",
-                "resume": "Helped customers onboard and improve adoption by 20 percent.",
                 "track_id": 1,
+                "company": "Company A",
+                "role": "CSM",
+                "job_post": "Customer success role focused on onboarding and renewals.",
+                "date_applied": "2026-04-24",
+                "ats_score": analysis["ats_score"],
+                "hm_score": analysis["hm_score"],
+                "analysis": analysis,
+                "interview_prep": "Talk through onboarding metrics.",
+                "notes": "",
             },
         )
-    ).json()
 
-    await client.post(
-        "/jobs",
-        headers=headers_a,
-        json={
-            "track_id": 1,
-            "company": "Company A",
-            "role": "CSM",
-            "job_post": "Customer success role focused on onboarding and renewals.",
-            "date_applied": "2026-04-24",
-            "ats_score": analysis["ats_score"],
-            "hm_score": analysis["hm_score"],
-            "analysis": analysis,
-            "interview_prep": "Talk through onboarding metrics.",
-            "notes": "",
-        },
-    )
+        response_a = await client_a.get("/jobs", headers=headers_a)
+        response_b = await client_b.get("/jobs", headers=headers_b)
 
-    response_a = await client.get("/jobs", headers=headers_a)
-    response_b = await client.get("/jobs", headers=headers_b)
-
-    assert response_a.status_code == 200
-    assert len(response_a.json()) == 1
-    assert response_b.status_code == 200
-    assert response_b.json() == []
+        assert response_a.status_code == 200
+        assert len(response_a.json()) == 1
+        assert response_b.status_code == 200
+        assert response_b.json() == []
 
 
 @pytest.mark.anyio

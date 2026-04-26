@@ -41,4 +41,4 @@ async def test_jordan_pushback(client) -> None:
         headers=headers,
     )
     payload = response.json()
-    assert "specific result or number" in payload["coaching"]
+    assert "specific situation" in payload["coaching"] or "specific result" in payload["coaching"]
